@@ -18,6 +18,7 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [needsConfirmation, setNeedsConfirmation] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -69,7 +70,7 @@ export default function SignupPage() {
     setSuccess(true)
     setLoading(false)
 
-    // Auto sign in
+    // Auto sign in (succeeds when email confirmation is disabled)
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -78,7 +79,28 @@ export default function SignupPage() {
     if (!signInError) {
       router.push('/rooms')
       router.refresh()
+    } else {
+      // Email confirmation required — show prompt instead of freezing
+      setNeedsConfirmation(true)
     }
+  }
+
+  if (success && needsConfirmation) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-bg-primary">
+        <div className="text-center max-w-sm">
+          <div className="text-4xl mb-4">📬</div>
+          <h2 className="text-xl font-bold text-text-primary mb-2">Check your email</h2>
+          <p className="text-text-muted text-sm mb-4">
+            We sent a confirmation link to <span className="text-text-primary">{email}</span>.
+            Click it to activate your account, then sign in.
+          </p>
+          <Link href="/login" className="text-accent-cyan hover:underline text-sm">
+            Go to sign in →
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   if (success) {
