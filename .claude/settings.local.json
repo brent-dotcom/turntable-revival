@@ -5,7 +5,10 @@
       "Bash(npx tsc:*)",
       "Bash(npx next:*)",
       "Bash(echo not installed:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(~/bin/supabase start:*)",
+      "Bash(~/bin/supabase db:*)",
+      "Bash(docker ps:*)"
     ]
   }
 }

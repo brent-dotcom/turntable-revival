@@ -17,7 +17,7 @@ html,
 body {
   padding: 0;
   margin: 0;
-  background-color: #0a0a0f;
+  background-color: #0f0f1a;
   color: #f1f0ff;
   font-family: var(--font-inter);
   -webkit-font-smoothing: antialiased;
@@ -29,24 +29,40 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #12121a;
+  background: #14142b;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2840;
+  background: #2a2845;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3d3a5c;
+  background: #3d3a60;
 }
 
-/* Vinyl record spin effect */
-@keyframes vinylSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* DJ Booth glow border */
+.booth-border {
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  box-shadow:
+    0 0 40px rgba(124, 58, 237, 0.15),
+    0 0 80px rgba(6, 182, 212, 0.06),
+    inset 0 1px 0 rgba(124, 58, 237, 0.25);
 }
 
-.vinyl-spin {
-  animation: vinylSpin 3s linear infinite;
+/* Neon glow utilities */
+.glow-purple {
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.5), 0 0 40px rgba(124, 58, 237, 0.2);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.5), 0 0 40px rgba(6, 182, 212, 0.2);
+}
+
+.glow-green {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+}
+
+.glow-red {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
 }
 
 /* Pixel rendering for avatars */
@@ -55,20 +71,31 @@ body {
   image-rendering: crisp-edges;
 }
 
-/* Glow effects */
-.glow-purple {
-  box-shadow: 0 0 15px rgba(124, 58, 237, 0.4), 0 0 40px rgba(124, 58, 237, 0.1);
-}
-
-.glow-green {
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
-}
-
-.glow-red {
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
-}
-
-/* YouTube iframe override */
+/* YouTube iframe */
 iframe[id^="youtube-"] {
   border: none;
+}
+
+/* Neon text effect */
+.neon-text-purple {
+  text-shadow: 0 0 10px rgba(124, 58, 237, 0.8), 0 0 20px rgba(124, 58, 237, 0.4);
+}
+
+.neon-text-cyan {
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.4);
+}
+
+/* Club floor scanline effect (subtle) */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
 }

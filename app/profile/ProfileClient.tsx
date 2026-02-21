@@ -4,7 +4,7 @@ import AvatarCustomizer from '@/components/avatar/AvatarCustomizer'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile } from '@/types'
+import type { AvatarAccessory, AvatarHair, Profile } from '@/types'
 import { Disc3, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -43,7 +43,7 @@ export default function ProfileClient({ profile, userEmail }: ProfileClientProps
   return (
     <div className="min-h-screen bg-bg-primary">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-border bg-bg-secondary/50 backdrop-blur-sm">
+      <nav className="flex items-center justify-between px-6 py-4 border-b border-border/60 bg-bg-secondary/50 backdrop-blur-md">
         <Link href="/rooms" className="flex items-center gap-2">
           <Disc3 size={20} className="text-accent-purple animate-spin-slow" />
           <span
@@ -67,7 +67,7 @@ export default function ProfileClient({ profile, userEmail }: ProfileClientProps
 
         {/* Account info */}
         <div className="bg-bg-card border border-border rounded-2xl p-6 mb-6">
-          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-4">
             Account
           </h2>
           <div className="flex flex-col gap-4">
@@ -103,15 +103,16 @@ export default function ProfileClient({ profile, userEmail }: ProfileClientProps
 
         {/* Avatar customizer */}
         <div className="bg-bg-card border border-border rounded-2xl p-6">
-          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-4">
             Avatar
           </h2>
           <AvatarCustomizer
             userId={profile.id}
+            seed={profile.avatar_seed || profile.username}
             initial={{
-              type: profile.avatar_type,
-              color: profile.avatar_color,
-              accessory: profile.avatar_accessory,
+              bgColor: profile.avatar_bg_color || 'b6e3f4',
+              accessory: (profile.avatar_accessory || 'none') as AvatarAccessory,
+              hair: (profile.avatar_hair || 'short01') as AvatarHair,
             }}
           />
         </div>

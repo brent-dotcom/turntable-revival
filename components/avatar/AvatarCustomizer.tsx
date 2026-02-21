@@ -5,22 +5,23 @@ import Avatar from './Avatar'
 import Button from '@/components/ui/Button'
 import { createClient } from '@/lib/supabase/client'
 import {
+  AVATAR_BG_COLORS,
   AVATAR_ACCESSORIES,
-  AVATAR_COLORS,
-  AVATAR_TYPES,
+  AVATAR_HAIR_STYLES,
   type AvatarAccessory,
   type AvatarConfig,
-  type AvatarType,
+  type AvatarHair,
 } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface AvatarCustomizerProps {
   userId: string
+  seed: string
   initial: AvatarConfig
   onSave?: (config: AvatarConfig) => void
 }
 
-export default function AvatarCustomizer({ userId, initial, onSave }: AvatarCustomizerProps) {
+export default function AvatarCustomizer({ userId, seed, initial, onSave }: AvatarCustomizerProps) {
   const [config, setConfig] = useState<AvatarConfig>(initial)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -31,9 +32,10 @@ export default function AvatarCustomizer({ userId, initial, onSave }: AvatarCust
     const { error } = await supabase
       .from('profiles')
       .update({
-        avatar_type: config.type,
-        avatar_color: config.color,
+        avatar_seed: seed,
+        avatar_bg_color: config.bgColor,
         avatar_accessory: config.accessory,
+        avatar_hair: config.hair,
       })
       .eq('id', userId)
 
@@ -47,82 +49,92 @@ export default function AvatarCustomizer({ userId, initial, onSave }: AvatarCust
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Preview */}
+      {/* Live preview */}
       <div className="flex justify-center">
-        <div className="flex flex-col items-center gap-3 p-6 bg-bg-secondary rounded-xl border border-border">
+        <div className="flex flex-col items-center gap-3 p-6 bg-bg-secondary rounded-2xl border border-border">
           <Avatar
-            type={config.type}
-            color={config.color}
+            seed={seed}
+            bgColor={config.bgColor}
             accessory={config.accessory}
+            hair={config.hair}
             size="xl"
           />
-          <p className="text-sm text-text-muted">Preview</p>
+          <p className="text-xs text-text-muted tracking-wider uppercase">Preview</p>
         </div>
       </div>
 
-      {/* Character Type */}
+      {/* Background color */}
       <div>
-        <p className="text-sm font-medium text-text-secondary mb-2">Character</p>
-        <div className="grid grid-cols-4 gap-2">
-          {AVATAR_TYPES.map((t) => (
+        <p className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wider">Background</p>
+        <div className="flex flex-wrap gap-2.5">
+          {AVATAR_BG_COLORS.map((col) => (
             <button
-              key={t.value}
-              onClick={() => setConfig((c) => ({ ...c, type: t.value }))}
+              key={col}
+              onClick={() => setConfig((c) => ({ ...c, bgColor: col }))}
               className={cn(
-                'flex flex-col items-center gap-1 p-2 rounded-lg border transition-all',
-                config.type === t.value
-                  ? 'border-accent-purple bg-accent-purple/20 text-text-primary'
-                  : 'border-border text-text-muted hover:border-border-bright hover:bg-bg-hover'
+                'w-9 h-9 rounded-full border-2 transition-all duration-150 hover:scale-110',
+                config.bgColor === col
+                  ? 'border-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.35)]'
+                  : 'border-transparent'
               )}
-            >
-              <Avatar
-                type={t.value}
-                color={config.color}
-                accessory="none"
-                size="sm"
-              />
-              <span className="text-xs">{t.label}</span>
-            </button>
+              style={{ backgroundColor: `#${col}` }}
+              title={`#${col}`}
+            />
           ))}
         </div>
       </div>
 
-      {/* Color */}
+      {/* Hair style */}
       <div>
-        <p className="text-sm font-medium text-text-secondary mb-2">Color</p>
-        <div className="flex flex-wrap gap-2">
-          {AVATAR_COLORS.map((col) => (
+        <p className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wider">Hair Style</p>
+        <div className="grid grid-cols-4 gap-2">
+          {AVATAR_HAIR_STYLES.map((h) => (
             <button
-              key={col}
-              onClick={() => setConfig((c) => ({ ...c, color: col }))}
+              key={h.value}
+              onClick={() => setConfig((c) => ({ ...c, hair: h.value as AvatarHair }))}
               className={cn(
-                'w-8 h-8 rounded-full border-2 transition-transform hover:scale-110',
-                config.color === col ? 'border-white scale-110' : 'border-transparent'
+                'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all duration-150',
+                config.hair === h.value
+                  ? 'border-accent-purple bg-accent-purple/20 shadow-[0_0_8px_rgba(124,58,237,0.3)]'
+                  : 'border-border hover:border-border-bright hover:bg-bg-hover'
               )}
-              style={{ backgroundColor: col }}
-              title={col}
-            />
+            >
+              <Avatar
+                seed={seed}
+                bgColor={config.bgColor}
+                accessory="none"
+                hair={h.value}
+                size="xs"
+              />
+              <span className="text-[10px] text-text-muted">{h.label}</span>
+            </button>
           ))}
         </div>
       </div>
 
       {/* Accessory */}
       <div>
-        <p className="text-sm font-medium text-text-secondary mb-2">Accessory</p>
+        <p className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wider">Accessory</p>
         <div className="grid grid-cols-4 gap-2">
           {AVATAR_ACCESSORIES.map((acc) => (
             <button
               key={acc.value}
-              onClick={() => setConfig((c) => ({ ...c, accessory: acc.value }))}
+              onClick={() => setConfig((c) => ({ ...c, accessory: acc.value as AvatarAccessory }))}
               className={cn(
-                'flex flex-col items-center gap-1 p-2 rounded-lg border transition-all text-xs',
+                'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all duration-150',
                 config.accessory === acc.value
-                  ? 'border-accent-purple bg-accent-purple/20 text-text-primary'
-                  : 'border-border text-text-muted hover:border-border-bright hover:bg-bg-hover'
+                  ? 'border-accent-cyan bg-accent-cyan/10 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
+                  : 'border-border hover:border-border-bright hover:bg-bg-hover'
               )}
             >
-              <span className="text-lg">{acc.emoji}</span>
-              <span>{acc.label}</span>
+              <Avatar
+                seed={seed}
+                bgColor={config.bgColor}
+                accessory={acc.value}
+                hair={config.hair}
+                size="xs"
+              />
+              <span className="text-[10px] text-text-muted">{acc.label}</span>
             </button>
           ))}
         </div>

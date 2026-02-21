@@ -3,16 +3,30 @@
 // ============================================================
 
 export type AvatarType = 'human' | 'robot' | 'cat' | 'alien'
-export type AvatarAccessory = 'none' | 'headphones' | 'hat' | 'glasses'
+export type AvatarAccessory = 'none' | 'glasses' | 'headphones' | 'sunglasses'
+export type AvatarHair =
+  | 'short01'
+  | 'short02'
+  | 'short03'
+  | 'short04'
+  | 'short05'
+  | 'long01'
+  | 'long02'
+  | 'mohawk01'
 export type VoteType = 'awesome' | 'lame'
 
 export interface Profile {
   id: string
   username: string
   display_name: string | null
+  // Legacy fields (still in DB)
   avatar_type: AvatarType
   avatar_color: string
+  // DiceBear avatar fields
+  avatar_seed: string | null
+  avatar_bg_color: string
   avatar_accessory: AvatarAccessory
+  avatar_hair: AvatarHair
   created_at: string
   updated_at: string
 }
@@ -103,7 +117,6 @@ export interface PlaybackState {
   videoId: string | null
   startedAt: string | null
   isPlaying: boolean
-  // Computed elapsed seconds since video_started_at
   elapsedSeconds: number
 }
 
@@ -112,11 +125,41 @@ export interface PlaybackState {
 // ============================================================
 
 export interface AvatarConfig {
-  type: AvatarType
-  color: string
+  bgColor: string
   accessory: AvatarAccessory
+  hair: AvatarHair
 }
 
+export const AVATAR_BG_COLORS: string[] = [
+  'b6e3f4', // sky blue
+  'c0aede', // lavender
+  'ffd5dc', // rose
+  'ffdfbf', // peach
+  'd1fae5', // mint
+  'fef3c7', // gold
+  '7c3aed', // purple (brand)
+  '06b6d4', // cyan (brand)
+]
+
+export const AVATAR_ACCESSORIES: { value: AvatarAccessory; label: string; emoji: string }[] = [
+  { value: 'none', label: 'None', emoji: '—' },
+  { value: 'glasses', label: 'Glasses', emoji: '👓' },
+  { value: 'headphones', label: 'Headphones', emoji: '🎧' },
+  { value: 'sunglasses', label: 'Shades', emoji: '🕶️' },
+]
+
+export const AVATAR_HAIR_STYLES: { value: AvatarHair; label: string }[] = [
+  { value: 'short01', label: 'Short A' },
+  { value: 'short02', label: 'Short B' },
+  { value: 'short03', label: 'Short C' },
+  { value: 'short04', label: 'Short D' },
+  { value: 'short05', label: 'Short E' },
+  { value: 'long01', label: 'Long A' },
+  { value: 'long02', label: 'Long B' },
+  { value: 'mohawk01', label: 'Mohawk' },
+]
+
+// Legacy — kept for type compatibility
 export const AVATAR_TYPES: { value: AvatarType; label: string; emoji: string }[] = [
   { value: 'human', label: 'Human', emoji: '🧑' },
   { value: 'robot', label: 'Robot', emoji: '🤖' },
@@ -124,22 +167,8 @@ export const AVATAR_TYPES: { value: AvatarType; label: string; emoji: string }[]
   { value: 'alien', label: 'Alien', emoji: '👽' },
 ]
 
-export const AVATAR_ACCESSORIES: { value: AvatarAccessory; label: string; emoji: string }[] = [
-  { value: 'none', label: 'None', emoji: '—' },
-  { value: 'headphones', label: 'Headphones', emoji: '🎧' },
-  { value: 'hat', label: 'Hat', emoji: '🎩' },
-  { value: 'glasses', label: 'Glasses', emoji: '👓' },
-]
-
 export const AVATAR_COLORS = [
-  '#7c3aed', // purple
-  '#ec4899', // pink
-  '#06b6d4', // cyan
-  '#10b981', // green
-  '#f59e0b', // amber
-  '#ef4444', // red
-  '#f97316', // orange
-  '#3b82f6', // blue
-  '#84cc16', // lime
-  '#ffffff', // white
+  '#7c3aed', '#ec4899', '#06b6d4', '#10b981',
+  '#f59e0b', '#ef4444', '#f97316', '#3b82f6',
+  '#84cc16', '#ffffff',
 ]

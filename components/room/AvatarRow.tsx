@@ -19,30 +19,38 @@ export default function AvatarRow({
   currentDJId,
 }: AvatarRowProps) {
   const [bouncingUsers, setBouncingUsers] = useState<Set<string>>(new Set())
+  const [shakingUsers, setShakingUsers] = useState<Set<string>>(new Set())
   const prevVotesRef = useRef<Vote[]>([])
 
-  // Detect new awesome votes and trigger bounce animation
   useEffect(() => {
     const prevIds = new Set(prevVotesRef.current.map((v) => v.id))
     const newVotes = votes.filter((v) => !prevIds.has(v.id))
 
     newVotes.forEach((vote) => {
       if (vote.vote_type === 'awesome') {
-        setBouncingUsers((prev) => new Set(Array.from(prev).concat(vote.user_id)))
+        setBouncingUsers((prev) => new Set([...prev, vote.user_id]))
         setTimeout(() => {
           setBouncingUsers((prev) => {
             const next = new Set(prev)
             next.delete(vote.user_id)
             return next
           })
-        }, 1000)
+        }, 700)
+      } else if (vote.vote_type === 'lame') {
+        setShakingUsers((prev) => new Set([...prev, vote.user_id]))
+        setTimeout(() => {
+          setShakingUsers((prev) => {
+            const next = new Set(prev)
+            next.delete(vote.user_id)
+            return next
+          })
+        }, 600)
       }
     })
 
     prevVotesRef.current = votes
   }, [votes])
 
-  // Build a map of user votes for the current video
   const userVoteMap = new Map<string, VoteType>()
   if (currentVideoId) {
     votes
@@ -51,44 +59,41 @@ export default function AvatarRow({
   }
 
   return (
-    <div className="flex items-end justify-center gap-3 px-4 py-3 min-h-[80px] overflow-x-auto">
+    <div className="flex items-end justify-center gap-4 px-4 py-3 min-h-[88px] overflow-x-auto">
       {members.map((member) => {
         const vote = userVoteMap.get(member.user_id)
         const isDJ = member.user_id === currentDJId
         const isBouncing = bouncingUsers.has(member.user_id)
+        const isShaking = shakingUsers.has(member.user_id)
+        const profile = member.profile
 
         return (
           <div
             key={member.id}
-            className={cn(
-              'flex flex-col items-center gap-1 flex-shrink-0 transition-all duration-300',
-              isBouncing && 'drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]'
-            )}
+            className="flex flex-col items-center gap-1 flex-shrink-0"
           >
-            {/* DJ crown indicator */}
-            {isDJ && (
-              <span className="text-xs animate-bounce-slow">👑</span>
-            )}
-            {/* Vote indicator */}
-            {vote && !isDJ && (
-              <span className="text-xs">
-                {vote === 'awesome' ? '👍' : '👎'}
-              </span>
-            )}
-            <div
-              className={cn(
-                'transition-transform duration-300',
-                isBouncing && 'animate-bounce'
+            {/* Status indicator above avatar */}
+            <div className="h-5 flex items-center justify-center">
+              {isDJ && <span className="text-sm animate-bounce-slow">👑</span>}
+              {vote && !isDJ && (
+                <span className={cn(
+                  'text-xs font-bold rounded px-1',
+                  vote === 'awesome' ? 'text-accent-green' : 'text-accent-red'
+                )}>
+                  {vote === 'awesome' ? '▲' : '▼'}
+                </span>
               )}
-            >
-              <Avatar
-                type={member.profile.avatar_type}
-                color={member.profile.avatar_color}
-                accessory={member.profile.avatar_accessory}
-                size="sm"
-                label={member.profile.display_name || member.profile.username}
-              />
             </div>
+            <Avatar
+              seed={profile.avatar_seed || profile.username}
+              bgColor={profile.avatar_bg_color || 'b6e3f4'}
+              accessory={profile.avatar_accessory || 'none'}
+              hair={profile.avatar_hair || 'short01'}
+              size="sm"
+              bouncing={isBouncing}
+              shaking={isShaking}
+              label={profile.display_name || profile.username}
+            />
           </div>
         )
       })}
