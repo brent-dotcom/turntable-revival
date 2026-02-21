@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tail:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)",
+      "Bash(echo not installed:*)",
+      "Bash(git:*)"
+    ]
+  }
+}
