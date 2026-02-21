@@ -28,11 +28,13 @@ export function buildDiceBearUrl(
   accessory = 'none',
   hair = 'short01'
 ): string {
-  const color = bgColor.startsWith('#') ? bgColor.slice(1) : bgColor
+  const safeSeed = seed || 'default'
+  const safeColor = (bgColor || 'b6e3f4').replace('#', '')
+  const safeHair = hair || 'short01'
   const parts = [
-    `seed=${encodeURIComponent(seed)}`,
-    `backgroundColor=${color}`,
-    `hair=${hair}`,
+    `seed=${encodeURIComponent(safeSeed)}`,
+    `backgroundColor=${safeColor}`,
+    `hair=${safeHair}`,
     accessory && accessory !== 'none'
       ? `accessories=${accessory}&accessoriesProbability=100`
       : 'accessoriesProbability=0',
@@ -72,6 +74,11 @@ export default function Avatar({
           height={px}
           className="w-full h-full object-cover"
           style={{ imageRendering: 'pixelated' }}
+          onError={(e) => {
+            const t = e.currentTarget
+            t.onerror = null
+            t.src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(seed || 'default')}`
+          }}
         />
       </div>
       {label && (

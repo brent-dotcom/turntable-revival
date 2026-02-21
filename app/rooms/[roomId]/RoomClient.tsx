@@ -15,7 +15,7 @@ import type { User } from '@supabase/supabase-js'
 import type { AvatarConfig } from '@/types'
 import { Disc3, Music } from 'lucide-react'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface RoomClientProps {
   roomId: string
@@ -45,6 +45,9 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
   const [showAvatarSetup, setShowAvatarSetup] = useState(false)
   const [joiningQueue, setJoiningQueue] = useState(false)
   const [videoEnded, setVideoEnded] = useState(false)
+  const [audioOnly, setAudioOnly] = useState(false)
+  const avatarModalShownRef = useRef(false)
+  const skippingRef = useRef(false)
 
   const isCurrentDJ = room?.current_dj_id === currentUserId
   const hasVideo = !!room?.current_video_id
@@ -52,9 +55,15 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
   // Find the current user's profile from members
   const currentUserProfile = members.find((m) => m.user_id === currentUserId)?.profile ?? null
 
-  // Show avatar setup on first visit (avatar_seed not yet set)
+  // Show avatar setup on first visit — only once per session
   useEffect(() => {
-    if (currentUserId && currentUserProfile && !currentUserProfile.avatar_seed) {
+    if (
+      currentUserId &&
+      currentUserProfile &&
+      !currentUserProfile.avatar_seed &&
+      !avatarModalShownRef.current
+    ) {
+      avatarModalShownRef.current = true
       setShowAvatarSetup(true)
     }
   }, [currentUserId, currentUserProfile])
@@ -73,9 +82,12 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
   }
 
   async function handleSongEnded() {
+    if (skippingRef.current) return
+    skippingRef.current = true
     setVideoEnded(true)
     await skipSong()
     setVideoEnded(false)
+    setTimeout(() => { skippingRef.current = false }, 5000)
   }
 
   if (isLoading) {
@@ -119,13 +131,36 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
           {/* DJ Booth — video area with neon glow */}
           <div className="relative flex-1 min-h-0 bg-black booth-border">
             {hasVideo ? (
-              <YouTubePlayer
-                key={room.current_video_id!}
-                videoId={room.current_video_id!}
-                startSeconds={playbackElapsed}
-                onEnded={handleSongEnded}
-                muted={false}
-              />
+              <>
+                {/* Keep iframe mounted for audio even when hidden */}
+                <div style={{ height: audioOnly ? 0 : '100%', overflow: 'hidden' }}>
+                  <YouTubePlayer
+                    key={room.current_video_id!}
+                    videoId={room.current_video_id!}
+                    startSeconds={playbackElapsed}
+                    onEnded={handleSongEnded}
+                    muted={false}
+                  />
+                </div>
+                {/* Audio-only now-playing bar */}
+                {audioOnly && (
+                  <div className="flex items-center justify-center gap-3 h-20 px-4">
+                    <div className="flex gap-0.5 items-end h-6">
+                      {[3,5,4,6,3,5,4].map((h, i) => (
+                        <div key={i} className="w-1 bg-accent-purple rounded-full animate-pulse" style={{ height: `${h * 4}px`, animationDelay: `${i * 80}ms` }} />
+                      ))}
+                    </div>
+                    <p className="text-sm text-accent-cyan truncate max-w-xs">♪ {room.current_video_title}</p>
+                  </div>
+                )}
+                {/* Audio-only toggle */}
+                <button
+                  onClick={() => setAudioOnly((v) => !v)}
+                  className="absolute top-2 right-2 z-20 text-xs px-2 py-1 rounded-lg bg-black/60 text-text-muted hover:text-text-primary border border-white/10 transition-colors"
+                >
+                  {audioOnly ? '🎬 Show Video' : '🎵 Audio Only'}
+                </button>
+              </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center gap-4 min-h-[300px] bg-booth-glow">
                 <Disc3
