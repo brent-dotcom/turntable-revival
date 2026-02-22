@@ -46,7 +46,6 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
   const [joiningQueue, setJoiningQueue] = useState(false)
   const [videoEnded, setVideoEnded] = useState(false)
   const [audioOnly, setAudioOnly] = useState(false)
-  const avatarModalShownRef = useRef(false)
   const skippingRef = useRef(false)
 
   const isCurrentDJ = room?.current_dj_id === currentUserId
@@ -55,15 +54,12 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
   // Find the current user's profile from members
   const currentUserProfile = members.find((m) => m.user_id === currentUserId)?.profile ?? null
 
-  // Show avatar setup on first visit — only once per session
+  // Show avatar setup on first login — only once, persisted in localStorage
   useEffect(() => {
-    if (
-      currentUserId &&
-      currentUserProfile &&
-      !currentUserProfile.avatar_seed &&
-      !avatarModalShownRef.current
-    ) {
-      avatarModalShownRef.current = true
+    if (!currentUserId || !currentUserProfile || currentUserProfile.avatar_seed) return
+    const key = `avatar_setup_seen_${currentUserId}`
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, '1')
       setShowAvatarSetup(true)
     }
   }, [currentUserId, currentUserProfile])
@@ -87,7 +83,7 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
     setVideoEnded(true)
     await skipSong()
     setVideoEnded(false)
-    setTimeout(() => { skippingRef.current = false }, 5000)
+    setTimeout(() => { skippingRef.current = false }, 10_000)
   }
 
   if (isLoading) {
@@ -132,8 +128,15 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
           <div className="relative flex-1 min-h-0 bg-black booth-border">
             {hasVideo ? (
               <>
-                {/* Keep iframe mounted for audio even when hidden */}
-                <div style={{ height: audioOnly ? 0 : '100%', overflow: 'hidden' }}>
+                {/* Keep iframe in DOM for audio — position off-screen in audio-only mode */}
+                <div style={audioOnly ? {
+                  position: 'absolute',
+                  width: '1px',
+                  height: '1px',
+                  top: '-9999px',
+                  left: '-9999px',
+                  overflow: 'hidden',
+                } : { height: '100%' }}>
                   <YouTubePlayer
                     key={room.current_video_id!}
                     videoId={room.current_video_id!}
@@ -142,15 +145,24 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
                     muted={false}
                   />
                 </div>
-                {/* Audio-only now-playing bar */}
+                {/* Audio-only now-playing display */}
                 {audioOnly && (
-                  <div className="flex items-center justify-center gap-3 h-20 px-4">
-                    <div className="flex gap-0.5 items-end h-6">
-                      {[3,5,4,6,3,5,4].map((h, i) => (
-                        <div key={i} className="w-1 bg-accent-purple rounded-full animate-pulse" style={{ height: `${h * 4}px`, animationDelay: `${i * 80}ms` }} />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-8">
+                    <div className="flex gap-1 items-end h-10">
+                      {[3,5,7,9,6,8,5,7,4,6].map((h, i) => (
+                        <div
+                          key={i}
+                          className="w-1.5 bg-gradient-to-t from-accent-purple to-accent-cyan rounded-full animate-pulse"
+                          style={{ height: `${h * 4}px`, animationDelay: `${i * 70}ms`, animationDuration: `${0.8 + i * 0.1}s` }}
+                        />
                       ))}
                     </div>
-                    <p className="text-sm text-accent-cyan truncate max-w-xs">♪ {room.current_video_title}</p>
+                    <div className="text-center">
+                      <p className="text-accent-cyan font-semibold text-base truncate max-w-xs neon-text-cyan">
+                        ♪ {room.current_video_title}
+                      </p>
+                      <p className="text-text-muted text-xs mt-1">Now Playing — Audio Only</p>
+                    </div>
                   </div>
                 )}
                 {/* Audio-only toggle */}
@@ -334,7 +346,7 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
           </div>
           <AvatarCustomizer
             userId={currentUserId}
-            seed={currentUserProfile.username}
+            seed={currentUserId}
             initial={{
               bgColor: currentUserProfile.avatar_bg_color || 'b6e3f4',
               accessory: currentUserProfile.avatar_accessory || 'none',

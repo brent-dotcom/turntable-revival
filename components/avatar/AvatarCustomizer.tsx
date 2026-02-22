@@ -25,10 +25,12 @@ export default function AvatarCustomizer({ userId, seed, initial, onSave }: Avat
   const [config, setConfig] = useState<AvatarConfig>(initial)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const supabase = createClient()
 
   async function handleSave() {
     setSaving(true)
+    setSaveError(null)
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -40,7 +42,10 @@ export default function AvatarCustomizer({ userId, seed, initial, onSave }: Avat
       .eq('id', userId)
 
     setSaving(false)
-    if (!error) {
+    if (error) {
+      console.error('Avatar save failed:', error)
+      setSaveError(error.message)
+    } else {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
       onSave?.(config)
@@ -140,6 +145,11 @@ export default function AvatarCustomizer({ userId, seed, initial, onSave }: Avat
         </div>
       </div>
 
+      {saveError && (
+        <p className="text-sm text-accent-red bg-accent-red/10 border border-accent-red/20 rounded-lg px-3 py-2">
+          {saveError}
+        </p>
+      )}
       <Button onClick={handleSave} loading={saving} size="lg">
         {saved ? '✓ Saved!' : 'Save Avatar'}
       </Button>

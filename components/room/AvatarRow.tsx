@@ -85,7 +85,7 @@ export default function AvatarRow({
               )}
             </div>
             <Avatar
-              seed={profile.avatar_seed || profile.username}
+              seed={profile.avatar_seed || profile.id}
               bgColor={profile.avatar_bg_color || 'b6e3f4'}
               accessory={profile.avatar_accessory || 'none'}
               hair={profile.avatar_hair || 'short01'}

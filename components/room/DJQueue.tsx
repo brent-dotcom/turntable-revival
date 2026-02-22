@@ -53,7 +53,7 @@ export default function DJQueue({
           <span className="absolute top-2.5 right-3 w-2 h-2 rounded-full bg-accent-green shadow-[0_0_6px_rgba(16,185,129,0.8)] animate-pulse" />
           <div className="relative">
             <Avatar
-              seed={currentDJ.avatar_seed || currentDJ.username}
+              seed={currentDJ.avatar_seed || currentDJ.id}
               bgColor={currentDJ.avatar_bg_color || 'b6e3f4'}
               accessory={currentDJ.avatar_accessory || 'none'}
               hair={currentDJ.avatar_hair || 'short01'}
@@ -108,7 +108,7 @@ export default function DJQueue({
                   {idx + 1}
                 </span>
                 <Avatar
-                  seed={profile.avatar_seed || profile.username}
+                  seed={profile.avatar_seed || profile.id}
                   bgColor={profile.avatar_bg_color || 'b6e3f4'}
                   accessory={profile.avatar_accessory || 'none'}
                   hair={profile.avatar_hair || 'short01'}

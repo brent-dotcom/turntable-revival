@@ -47,6 +47,7 @@ export function useRoom(roomId: string): UseRoomReturn {
 
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastAutoSkipRef = useRef<number>(0)
 
   // ── Load initial data ──────────────────────────────────────────────────────
   const loadInitialData = useCallback(async () => {
@@ -298,7 +299,9 @@ export function useRoom(roomId: string): UseRoomReturn {
 
     const lamePercent = voteCounts.lamePercent
     if (lamePercent >= room.lame_threshold && voteCounts.total >= 2) {
-      // Trigger skip via API
+      const now = Date.now()
+      if (now - lastAutoSkipRef.current < 10_000) return // 10-second cooldown
+      lastAutoSkipRef.current = now
       fetch(`/api/rooms/${roomId}/skip`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

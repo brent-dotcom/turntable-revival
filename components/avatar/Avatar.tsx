@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 interface AvatarProps {
@@ -53,8 +54,10 @@ export default function Avatar({
   label,
   className,
 }: AvatarProps) {
+  const [imgError, setImgError] = useState(false)
   const px = SIZE_MAP[size]
   const url = buildDiceBearUrl(seed, bgColor, accessory, hair)
+  const initial = (label || seed || '?')[0].toUpperCase()
 
   return (
     <div className={cn('flex flex-col items-center gap-1', className)}>
@@ -66,20 +69,25 @@ export default function Avatar({
         )}
         style={{ width: px, height: px }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={url}
-          alt={label || seed}
-          width={px}
-          height={px}
-          className="w-full h-full object-cover"
-          style={{ imageRendering: 'pixelated' }}
-          onError={(e) => {
-            const t = e.currentTarget
-            t.onerror = null
-            t.src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(seed || 'default')}`
-          }}
-        />
+        {imgError ? (
+          <div
+            className="w-full h-full flex items-center justify-center font-bold text-white/80"
+            style={{ backgroundColor: `#${(bgColor || 'b6e3f4').replace('#', '')}`, fontSize: Math.round(px * 0.4) }}
+          >
+            {initial}
+          </div>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={url}
+            alt={label || seed}
+            width={px}
+            height={px}
+            className="w-full h-full object-cover"
+            style={{ imageRendering: 'pixelated' }}
+            onError={() => setImgError(true)}
+          />
+        )}
       </div>
       {label && (
         <span
