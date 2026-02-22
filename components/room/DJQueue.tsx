@@ -1,6 +1,6 @@
 'use client'
 
-import Avatar from '@/components/avatar/Avatar'
+import Avatar, { seedToColor } from '@/components/avatar/Avatar'
 import Button from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import type { DJQueueEntry, Profile, Room } from '@/types'
@@ -54,7 +54,7 @@ export default function DJQueue({
           <div className="relative">
             <Avatar
               seed={currentDJ.avatar_seed || currentDJ.id}
-              bgColor={currentDJ.avatar_bg_color || 'b6e3f4'}
+              bgColor={currentDJ.avatar_seed ? currentDJ.avatar_bg_color : seedToColor(currentDJ.id)}
               accessory={currentDJ.avatar_accessory || 'none'}
               hair={currentDJ.avatar_hair || 'short01'}
               size="sm"
@@ -109,7 +109,7 @@ export default function DJQueue({
                 </span>
                 <Avatar
                   seed={profile.avatar_seed || profile.id}
-                  bgColor={profile.avatar_bg_color || 'b6e3f4'}
+                  bgColor={profile.avatar_seed ? profile.avatar_bg_color : seedToColor(profile.id)}
                   accessory={profile.avatar_accessory || 'none'}
                   hair={profile.avatar_hair || 'short01'}
                   size="xs"

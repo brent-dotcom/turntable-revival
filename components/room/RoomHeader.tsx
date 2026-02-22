@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import type { Profile, Room } from '@/types'
-import { buildDiceBearUrl } from '@/components/avatar/Avatar'
+import { buildDiceBearUrl, seedToColor } from '@/components/avatar/Avatar'
 import { Disc3, User, Users } from 'lucide-react'
 import Link from 'next/link'
 
@@ -58,7 +58,7 @@ export default function RoomHeader({ room, memberCount, currentUserProfile }: Ro
             <img
               src={buildDiceBearUrl(
                 currentUserProfile.avatar_seed || currentUserProfile.id,
-                currentUserProfile.avatar_bg_color || 'b6e3f4',
+                currentUserProfile.avatar_seed ? currentUserProfile.avatar_bg_color : seedToColor(currentUserProfile.id),
                 currentUserProfile.avatar_accessory || 'none',
                 currentUserProfile.avatar_hair || 'short01'
               )}
