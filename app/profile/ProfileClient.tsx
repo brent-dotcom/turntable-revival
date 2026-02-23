@@ -108,7 +108,7 @@ export default function ProfileClient({ profile, userEmail }: ProfileClientProps
           </h2>
           <AvatarCustomizer
             userId={profile.id}
-            seed={profile.id}
+            seed={profile.username}
             initial={{
               bgColor: profile.avatar_bg_color || 'b6e3f4',
               accessory: (profile.avatar_accessory || 'none') as AvatarAccessory,

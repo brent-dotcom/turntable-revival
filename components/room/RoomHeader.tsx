@@ -57,8 +57,8 @@ export default function RoomHeader({ room, memberCount, currentUserProfile }: Ro
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={buildDiceBearUrl(
-                currentUserProfile.avatar_seed || currentUserProfile.id,
-                currentUserProfile.avatar_seed ? currentUserProfile.avatar_bg_color : seedToColor(currentUserProfile.id),
+                currentUserProfile.avatar_seed || currentUserProfile.username,
+                currentUserProfile.avatar_seed ? currentUserProfile.avatar_bg_color : seedToColor(currentUserProfile.username),
                 currentUserProfile.avatar_accessory || 'none',
                 currentUserProfile.avatar_hair || 'short01'
               )}

@@ -346,7 +346,7 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
           </div>
           <AvatarCustomizer
             userId={currentUserId}
-            seed={currentUserId}
+            seed={currentUserProfile.username}
             initial={{
               bgColor: currentUserProfile.avatar_bg_color || 'b6e3f4',
               accessory: currentUserProfile.avatar_accessory || 'none',
