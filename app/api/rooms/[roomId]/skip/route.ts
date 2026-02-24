@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+const SKIP_COOLDOWN_SECONDS = 15
+
 // POST /api/rooms/[roomId]/skip
-// Called by the DJ manually or auto-triggered by lame vote threshold
 export async function POST(
   _request: Request,
   { params }: { params: { roomId: string } }
@@ -16,7 +17,6 @@ export async function POST(
 
   const { roomId } = params
 
-  // Verify room exists and user is either the current DJ or voting threshold triggered
   const { data: room, error: roomError } = await supabase
     .from('rooms')
     .select('*')
@@ -27,20 +27,15 @@ export async function POST(
     return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   }
 
-  // Check if user is DJ or if lame threshold was reached
   const isDJ = room.current_dj_id === user.id
+
+  // Non-DJs can only skip via lame vote threshold
   if (!isDJ) {
-    // Verify lame threshold
     const { data: votes } = await supabase
       .from('votes')
       .select('vote_type')
       .eq('room_id', roomId)
       .eq('video_id', room.current_video_id ?? '')
-
-    const { data: members } = await supabase
-      .from('room_members')
-      .select('id')
-      .eq('room_id', roomId)
 
     const lameCount = votes?.filter((v) => v.vote_type === 'lame').length ?? 0
     const totalVotes = votes?.length ?? 0
@@ -54,7 +49,21 @@ export async function POST(
     }
   }
 
-  // Advance the queue using our DB function
+  // Atomic cooldown check: claim the skip slot only if cooldown has elapsed.
+  // If two requests race, only one will match this WHERE clause and get a row back.
+  const { data: claimed } = await supabase
+    .from('rooms')
+    .update({ last_skipped_at: new Date().toISOString() })
+    .eq('id', roomId)
+    .or(`last_skipped_at.is.null,last_skipped_at.lt.${new Date(Date.now() - SKIP_COOLDOWN_SECONDS * 1000).toISOString()}`)
+    .select('id')
+    .single()
+
+  if (!claimed) {
+    return NextResponse.json({ error: 'Skip cooldown active' }, { status: 429 })
+  }
+
+  // Advance the queue
   const { error: advanceError } = await supabase.rpc('advance_dj_queue', {
     p_room_id: roomId,
   })

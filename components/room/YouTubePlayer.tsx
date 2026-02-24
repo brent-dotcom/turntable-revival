@@ -53,6 +53,8 @@ export default function YouTubePlayer({
   const playerRef = useRef<YT.Player | null>(null)
   const onEndedRef = useRef(onEnded)
   const onReadyRef = useRef(onReady)
+  // Capture startSeconds only once — changing it must not recreate the player
+  const startSecondsRef = useRef(startSeconds)
 
   useEffect(() => { onEndedRef.current = onEnded }, [onEnded])
   useEffect(() => { onReadyRef.current = onReady }, [onReady])
@@ -77,7 +79,7 @@ export default function YouTubePlayer({
       videoId,
       playerVars: {
         autoplay: 1,
-        start: Math.floor(startSeconds),
+        start: Math.floor(startSecondsRef.current),
         controls: 0,
         disablekb: 1,
         fs: 0,
@@ -108,7 +110,7 @@ export default function YouTubePlayer({
         },
       },
     })
-  }, [videoId, startSeconds, muted])
+  }, [videoId, muted])
 
   useEffect(() => {
     createPlayer()

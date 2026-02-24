@@ -66,7 +66,6 @@ export default function Avatar({
   const px = SIZE_MAP[size]
   const url = buildDiceBearUrl(seed, bgColor, accessory, hair)
   const initial = (label || seed || '?')[0].toUpperCase()
-
   return (
     <div className={cn('flex flex-col items-center gap-1', className)}>
       <div

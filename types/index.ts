@@ -3,7 +3,7 @@
 // ============================================================
 
 export type AvatarType = 'human' | 'robot' | 'cat' | 'alien'
-export type AvatarAccessory = 'none' | 'glasses' | 'headphones' | 'sunglasses'
+export type AvatarAccessory = 'none' | 'variant01' | 'variant02' | 'variant03' | 'variant04'
 export type AvatarHair =
   | 'short01'
   | 'short02'
@@ -42,6 +42,7 @@ export interface Room {
   current_video_title: string | null
   current_video_thumbnail: string | null
   video_started_at: string | null
+  last_skipped_at: string | null
   lame_threshold: number
   is_active: boolean
   listener_count: number
@@ -143,9 +144,10 @@ export const AVATAR_BG_COLORS: string[] = [
 
 export const AVATAR_ACCESSORIES: { value: AvatarAccessory; label: string; emoji: string }[] = [
   { value: 'none', label: 'None', emoji: '—' },
-  { value: 'glasses', label: 'Glasses', emoji: '👓' },
-  { value: 'headphones', label: 'Headphones', emoji: '🎧' },
-  { value: 'sunglasses', label: 'Shades', emoji: '🕶️' },
+  { value: 'variant01', label: 'Style A', emoji: '😎' },
+  { value: 'variant02', label: 'Style B', emoji: '🤓' },
+  { value: 'variant03', label: 'Style C', emoji: '✨' },
+  { value: 'variant04', label: 'Style D', emoji: '🌟' },
 ]
 
 export const AVATAR_HAIR_STYLES: { value: AvatarHair; label: string }[] = [

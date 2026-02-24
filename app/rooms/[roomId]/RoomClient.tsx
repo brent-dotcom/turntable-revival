@@ -7,12 +7,10 @@ import VoteBar from '@/components/room/VoteBar'
 import AvatarRow from '@/components/room/AvatarRow'
 import YouTubePlayer from '@/components/room/YouTubePlayer'
 import SongPicker from '@/components/room/SongPicker'
-import AvatarCustomizer from '@/components/avatar/AvatarCustomizer'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import type { User } from '@supabase/supabase-js'
-import type { AvatarConfig } from '@/types'
 import { Disc3, Music } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
@@ -42,7 +40,7 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
   } = useRoom(roomId)
 
   const [showSongPicker, setShowSongPicker] = useState(false)
-  const [showAvatarSetup, setShowAvatarSetup] = useState(false)
+
   const [joiningQueue, setJoiningQueue] = useState(false)
   const [videoEnded, setVideoEnded] = useState(false)
   const [audioOnly, setAudioOnly] = useState(false)
@@ -53,16 +51,6 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
 
   // Find the current user's profile from members
   const currentUserProfile = members.find((m) => m.user_id === currentUserId)?.profile ?? null
-
-  // Show avatar setup on first login — only once, persisted in localStorage
-  useEffect(() => {
-    if (!currentUserId || !currentUserProfile || currentUserProfile.avatar_seed) return
-    const key = `avatar_setup_seen_${currentUserId}`
-    if (!localStorage.getItem(key)) {
-      localStorage.setItem(key, '1')
-      setShowAvatarSetup(true)
-    }
-  }, [currentUserId, currentUserProfile])
 
   // Prompt DJ to pick a song when they're up but no video is playing
   useEffect(() => {
@@ -128,15 +116,8 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
           <div className="relative flex-1 min-h-0 bg-black booth-border">
             {hasVideo ? (
               <>
-                {/* Keep iframe in DOM for audio — position off-screen in audio-only mode */}
-                <div style={audioOnly ? {
-                  position: 'absolute',
-                  width: '1px',
-                  height: '1px',
-                  top: '-9999px',
-                  left: '-9999px',
-                  overflow: 'hidden',
-                } : { height: '100%' }}>
+                {/* YouTube iframe — always full size so audio never stops */}
+                <div className="h-full">
                   <YouTubePlayer
                     key={room.current_video_id!}
                     videoId={room.current_video_id!}
@@ -145,9 +126,9 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
                     muted={false}
                   />
                 </div>
-                {/* Audio-only now-playing display */}
+                {/* Audio-only overlay — covers video completely, keeps iframe alive underneath */}
                 {audioOnly && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-8">
+                  <div className="absolute inset-0 z-10 bg-bg-primary flex flex-col items-center justify-center gap-5 px-8">
                     <div className="flex gap-1 items-end h-10">
                       {[3,5,7,9,6,8,5,7,4,6].map((h, i) => (
                         <div
@@ -158,7 +139,7 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
                       ))}
                     </div>
                     <div className="text-center">
-                      <p className="text-accent-cyan font-semibold text-base truncate max-w-xs neon-text-cyan">
+                      <p className="text-accent-cyan font-semibold text-lg truncate max-w-xs neon-text-cyan">
                         ♪ {room.current_video_title}
                       </p>
                       <p className="text-text-muted text-xs mt-1">Now Playing — Audio Only</p>
@@ -332,30 +313,6 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
         />
       </Modal>
 
-      {/* First-time avatar setup modal */}
-      {currentUserId && currentUserProfile && (
-        <Modal
-          isOpen={showAvatarSetup}
-          onClose={() => setShowAvatarSetup(false)}
-          title="Set Up Your Avatar"
-        >
-          <div className="mb-4">
-            <p className="text-sm text-text-muted">
-              Welcome! Customize your avatar before joining the crowd.
-            </p>
-          </div>
-          <AvatarCustomizer
-            userId={currentUserId}
-            seed={currentUserProfile.username}
-            initial={{
-              bgColor: currentUserProfile.avatar_bg_color || 'b6e3f4',
-              accessory: currentUserProfile.avatar_accessory || 'none',
-              hair: currentUserProfile.avatar_hair || 'short01',
-            }}
-            onSave={(_config: AvatarConfig) => setShowAvatarSetup(false)}
-          />
-        </Modal>
-      )}
     </div>
   )
 }
