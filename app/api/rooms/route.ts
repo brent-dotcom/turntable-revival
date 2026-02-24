@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, description } = body
+  const { name, description, genre } = body
 
   if (!name?.trim()) {
     return NextResponse.json({ error: 'Room name is required' }, { status: 400 })
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       name: name.trim(),
       slug,
       description: description?.trim() || null,
+      genre: genre?.trim() || null,
       created_by: user.id,
     })
     .select()

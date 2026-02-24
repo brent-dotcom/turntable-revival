@@ -36,6 +36,7 @@ export interface Room {
   name: string
   slug: string
   description: string | null
+  genre: string | null
   created_by: string | null
   current_dj_id: string | null
   current_video_id: string | null
@@ -48,6 +49,10 @@ export interface Room {
   listener_count: number
   created_at: string
   updated_at: string
+}
+
+export interface RoomWithDJ extends Room {
+  dj_profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_seed' | 'avatar_bg_color' | 'avatar_hair' | 'avatar_accessory'> | null
 }
 
 export interface RoomMember {

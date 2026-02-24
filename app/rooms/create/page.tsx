@@ -11,6 +11,7 @@ export default function CreateRoomPage() {
   const router = useRouter()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [genre, setGenre] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -22,7 +23,7 @@ export default function CreateRoomPage() {
     const res = await fetch('/api/rooms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify({ name, description, genre }),
     })
 
     const data = await res.json()
@@ -60,6 +61,22 @@ export default function CreateRoomPage() {
               required
               maxLength={60}
             />
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-text-secondary">
+                Genre <span className="text-text-muted">(optional)</span>
+              </label>
+              <select
+                value={genre}
+                onChange={(e) => setGenre(e.target.value)}
+                className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-purple focus:border-transparent transition-colors text-sm"
+              >
+                <option value="">Pick a genre...</option>
+                {['Electronic', 'Hip-Hop', 'Indie', 'Rock', 'Pop', 'R&B / Soul', 'Jazz', 'Lo-Fi', 'Metal', 'Latin', 'Everything'].map(g => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-text-secondary">
