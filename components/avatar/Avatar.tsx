@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 interface AvatarProps {
-  seed: string
+  seed: string | null | undefined
   bgColor?: string
   accessory?: string
   hair?: string
@@ -64,7 +64,8 @@ export default function Avatar({
 }: AvatarProps) {
   const [imgError, setImgError] = useState(false)
   const px = SIZE_MAP[size]
-  const url = buildDiceBearUrl(seed, bgColor, accessory, hair)
+  const isEmpty = !seed || !seed.trim()
+  const url = isEmpty ? '' : buildDiceBearUrl(seed, bgColor, accessory, hair)
   const initial = (label || seed || '?')[0].toUpperCase()
   return (
     <div className={cn('flex flex-col items-center gap-1', className)}>
@@ -76,18 +77,18 @@ export default function Avatar({
         )}
         style={{ width: px, height: px }}
       >
-        {imgError ? (
+        {isEmpty || imgError ? (
           <div
             className="w-full h-full flex items-center justify-center font-bold text-white/80"
             style={{ backgroundColor: `#${(bgColor || 'b6e3f4').replace('#', '')}`, fontSize: Math.round(px * 0.4) }}
           >
-            {initial}
+            {isEmpty ? '♪' : initial}
           </div>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={url}
-            alt={label || seed}
+            alt={label || seed || 'avatar'}
             width={px}
             height={px}
             className="w-full h-full object-cover"

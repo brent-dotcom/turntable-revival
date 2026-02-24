@@ -8,6 +8,7 @@ import type { User } from '@supabase/supabase-js'
 import { Disc3 } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface RoomClientProps {
   roomId: string
@@ -33,6 +34,7 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
     castVote,
   } = useRoom(roomId)
 
+  const router = useRouter()
   const [showSongPicker, setShowSongPicker] = useState(false)
   const [joiningQueue, setJoiningQueue] = useState(false)
   const skippingRef = useRef(false)
@@ -102,7 +104,10 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
         joiningQueue={joiningQueue}
         onJoinQueue={handleJoinQueue}
         onLeaveQueue={leaveQueue}
-        onPickSong={() => setShowSongPicker(true)}
+        onPickSong={() => {
+          if (!currentUserId) { router.push('/login'); return }
+          setShowSongPicker(true)
+        }}
         onSkip={skipSong}
         onEnded={handleSongEnded}
         onVote={castVote}

@@ -18,6 +18,7 @@ import {
 import { createClient } from "@/lib/supabase/client"
 import { buildDiceBearUrl, seedToColor } from "@/components/avatar/Avatar"
 import YouTubePlayer from "@/components/room/YouTubePlayer"
+import AuthPromptModal from "@/components/ui/AuthPromptModal"
 import type { DJQueueEntry, Profile, Room, RoomMember, Vote, VoteCounts, VoteType } from "@/types"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -52,7 +53,8 @@ interface MusicRoomProps {
 
 // ─── Avatar URL helper ──────────────────────────────────────────────────────
 
-function avatarUrl(profile: Profile): string {
+function avatarUrl(profile: Profile | null | undefined): string {
+  if (!profile?.username) return buildDiceBearUrl('default', 'b6e3f4', 'none', 'short01')
   return buildDiceBearUrl(
     profile.avatar_seed || profile.username,
     profile.avatar_seed ? profile.avatar_bg_color : seedToColor(profile.username),
@@ -253,16 +255,14 @@ function DJStage({
             <span className="text-2xl opacity-40">🎧</span>
           </div>
           <span className="relative z-10 text-[9px] text-text-muted mb-2">No DJ right now</span>
-          {currentUserId && (
-            <button
-              onClick={onJoinQueue}
-              disabled={joiningQueue}
-              className="relative z-10 mb-3 px-4 py-1.5 text-[9px] uppercase tracking-wider rounded-full text-bg-primary font-bold disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg, var(--neon-cyan), var(--neon-purple))" }}
-            >
-              {joiningQueue ? "Joining..." : "Be the DJ"}
-            </button>
-          )}
+          <button
+            onClick={onJoinQueue}
+            disabled={joiningQueue}
+            className="relative z-10 mb-3 px-4 py-1.5 text-[9px] uppercase tracking-wider rounded-full text-bg-primary font-bold disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, var(--neon-cyan), var(--neon-purple))" }}
+          >
+            {joiningQueue ? "Joining..." : "Be the DJ"}
+          </button>
         </>
       )}
 
@@ -315,12 +315,14 @@ function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[
     ],
   }
 
-  // Distribute members across 3 rows
-  const listeners = members.map((m, i) => ({
-    name: m.profile.display_name || m.profile.username,
-    url: avatarUrl(m.profile),
-    row: i % 3,
-  }))
+  // Distribute members across 3 rows — skip any with missing profiles
+  const listeners = members
+    .filter(m => m.profile?.username)
+    .map((m, i) => ({
+      name: m.profile.display_name || m.profile.username,
+      url: avatarUrl(m.profile),
+      row: i % 3,
+    }))
 
   return (
     <section className="relative flex-1 bg-floor-bg overflow-hidden" aria-label="Dance Floor">
@@ -560,6 +562,7 @@ function VoteControls({
 
       <div className="flex items-center justify-between px-3 md:px-6 py-3">
         {/* Awesome button */}
+        <div title={disabled && !isCurrentDJ ? "Sign in to vote" : undefined}>
         <button
           onClick={() => !disabled && onVote("awesome")}
           disabled={disabled || isCurrentDJ}
@@ -585,6 +588,7 @@ function VoteControls({
             </span>
           </div>
         </button>
+        </div>
 
         {/* Center controls */}
         <div className="flex items-center gap-2 md:gap-3">
@@ -600,6 +604,7 @@ function VoteControls({
         </div>
 
         {/* Lame button */}
+        <div title={disabled && !isCurrentDJ ? "Sign in to vote" : undefined}>
         <button
           onClick={() => !disabled && onVote("lame")}
           disabled={disabled || isCurrentDJ}
@@ -624,6 +629,7 @@ function VoteControls({
           </div>
           <ThumbsDown className={`w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:scale-110 ${userVote === "lame" ? "text-white fill-white/30" : "text-text-primary/70"}`} />
         </button>
+        </div>
       </div>
     </footer>
   )
@@ -814,7 +820,16 @@ export default function MusicRoom({
 }: MusicRoomProps) {
   const supabase = createClient()
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+
+  function handleJoinQueue() {
+    if (!currentUserId) {
+      setShowAuthPrompt(true)
+      return
+    }
+    onJoinQueue()
+  }
 
   // Supabase Realtime Broadcast for ephemeral chat
   useEffect(() => {
@@ -854,6 +869,8 @@ export default function MusicRoom({
 
   return (
     <div className="relative flex flex-col h-screen overflow-hidden bg-bg-primary">
+      <AuthPromptModal isOpen={showAuthPrompt} onClose={() => setShowAuthPrompt(false)} />
+
       {/* CRT scanline overlay */}
       <div className="scanline-overlay absolute inset-0 z-50 pointer-events-none" />
 
@@ -888,7 +905,7 @@ export default function MusicRoom({
             currentUserId={currentUserId}
             joiningQueue={joiningQueue}
             onPickSong={onPickSong}
-            onJoinQueue={onJoinQueue}
+            onJoinQueue={handleJoinQueue}
           />
           <DanceFloor members={members} />
         </div>
