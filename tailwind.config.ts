@@ -9,6 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // V0 neon tokens
+        neon: {
+          cyan: '#06b6d4',
+          purple: '#7c3aed',
+          pink: '#ef4444',
+          green: '#22c55e',
+        },
+        stage: { bg: '#111128' },
+        floor: { bg: '#0c0c1e' },
         bg: {
           primary: '#0f0f1a',
           secondary: '#14142b',
