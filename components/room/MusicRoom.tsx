@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import {
   ThumbsUp,
   ThumbsDown,
@@ -423,6 +423,58 @@ function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[
   )
 }
 
+// ─── Emoji Reaction Burst ─────────────────────────────────────────────────────
+
+const BURST_EMOJIS = ['🎵', '🎶', '✨', '🔥', '💜']
+
+function EmojiReactionBurst({ onDone }: { onDone: () => void }) {
+  const particles = useMemo(() =>
+    Array.from({ length: 12 }, (_, i) => ({
+      emoji:    BURST_EMOJIS[i % BURST_EMOJIS.length],
+      startX:   4 + Math.random() * 38,           // % — clusters left where Awesome button lives
+      dx:       (Math.random() - 0.35) * 200,      // px horizontal drift, slight rightward bias
+      dy:       200 + Math.random() * 260,         // px upward travel
+      size:     14 + Math.random() * 16,           // px font size
+      delay:    i * 0.04 + Math.random() * 0.12,  // s stagger
+      duration: 1.5 + Math.random() * 0.9,        // s
+      rotate:   (Math.random() - 0.5) * 90,       // deg spin
+    }))
+  , []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const longest = Math.max(...particles.map(p => p.delay + p.duration)) * 1000
+    const t = setTimeout(onDone, longest + 200)
+    return () => clearTimeout(t)
+  }, [onDone, particles])
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-40" aria-hidden="true">
+      {particles.map((p, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            bottom: '64px',
+            left: `${p.startX}%`,
+            fontSize: `${p.size}px`,
+            lineHeight: 1,
+            animationName: 'emojiBurst',
+            animationDuration: `${p.duration}s`,
+            animationDelay: `${p.delay}s`,
+            animationTimingFunction: 'ease-out',
+            animationFillMode: 'both',
+            '--dx': `${p.dx}px`,
+            '--dy': `-${p.dy}px`,
+            '--rotate': `${p.rotate}deg`,
+          } as React.CSSProperties}
+        >
+          {p.emoji}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─── Now Playing Bar ─────────────────────────────────────────────────────────
 
 function NowPlayingBar({
@@ -821,7 +873,15 @@ export default function MusicRoom({
   const supabase = createClient()
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
+  const [bursts, setBursts] = useState<number[]>([])
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+
+  function handleVote(type: VoteType) {
+    if (type === 'awesome') {
+      setBursts(prev => [...prev, Date.now()])
+    }
+    onVote(type)
+  }
 
   function handleJoinQueue() {
     if (!currentUserId) {
@@ -870,6 +930,14 @@ export default function MusicRoom({
   return (
     <div className="relative flex flex-col h-screen overflow-hidden bg-bg-primary">
       <AuthPromptModal isOpen={showAuthPrompt} onClose={() => setShowAuthPrompt(false)} />
+
+      {/* Emoji reaction bursts */}
+      {bursts.map(id => (
+        <EmojiReactionBurst
+          key={id}
+          onDone={() => setBursts(prev => prev.filter(b => b !== id))}
+        />
+      ))}
 
       {/* CRT scanline overlay */}
       <div className="scanline-overlay absolute inset-0 z-50 pointer-events-none" />
@@ -926,7 +994,7 @@ export default function MusicRoom({
           playbackElapsed={playbackElapsed}
           disabled={!currentUserId}
           isCurrentDJ={isCurrentDJ}
-          onVote={onVote}
+          onVote={handleVote}
           onSkip={onSkip}
         />
       )}
