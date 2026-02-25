@@ -98,7 +98,47 @@ export function useRoom(roomId: string): UseRoomReturn {
         .eq('room_id', roomId)
         .order('spot', { ascending: true })
 
-      setQueue((queueData ?? []) as (DJQueueEntry & { profile: Profile })[])
+      let resolvedQueue = (queueData ?? []) as (DJQueueEntry & { profile: Profile })[]
+
+      // Recovery: if a DJ is active but has no dj_queue row (old-system state),
+      // insert them into spot 1 so the new queue logic works correctly.
+      if (roomData.current_dj_id) {
+        const djInQueue = resolvedQueue.some((q) => q.user_id === roomData.current_dj_id)
+        if (!djInQueue) {
+          const { error: upsertError } = await supabase.from('dj_queue').upsert(
+            {
+              room_id: roomId,
+              user_id: roomData.current_dj_id,
+              position: 1,
+              spot: 1,
+              songs: [],
+            },
+            { onConflict: 'room_id,user_id' }
+          )
+          // Expose upsert error visibly on screen so we can diagnose without DevTools
+          if (upsertError) {
+            setError(`[DEBUG] dj_queue upsert failed: ${upsertError.message} | code: ${upsertError.code}`)
+            return
+          }
+
+          // Also ensure active_dj_spot is set
+          await supabase
+            .from('rooms')
+            .update({ active_dj_spot: 1 })
+            .eq('id', roomId)
+            .is('active_dj_spot', null)
+
+          // Re-fetch queue so state is accurate
+          const { data: refreshed } = await supabase
+            .from('dj_queue')
+            .select('*, profile:profiles(*)')
+            .eq('room_id', roomId)
+            .order('spot', { ascending: true })
+          resolvedQueue = (refreshed ?? []) as (DJQueueEntry & { profile: Profile })[]
+        }
+      }
+
+      setQueue(resolvedQueue)
 
       if (roomData.current_video_id) {
         const { data: votesData } = await supabase

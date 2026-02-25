@@ -1237,11 +1237,11 @@ export default function MusicRoom({
             onJoinQueue={handleJoinQueue}
           />
 
-          {/* My Queue Panel — only visible to the active DJ */}
-          {isCurrentDJ && currentUserDJEntry && (
+          {/* My Queue Panel — visible to any DJ who has claimed a spot */}
+          {currentUserDJEntry && (
             <div className="px-4 py-2 border-b border-border bg-bg-secondary/30">
               <MyQueuePanel
-                songs={currentUserDJEntry.songs}
+                songs={currentUserDJEntry.songs ?? []}
                 isPlaying={isCurrentDJ}
                 onUpdate={onUpdateDJSongs}
               />
