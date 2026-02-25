@@ -361,6 +361,21 @@ function DJStage({
   )
 }
 
+// ─── Ambient bot personas (purely visual, never in DB) ───────────────────────
+
+const BOTS = [
+  { name: 'VibeBot',     seed: 'vibebot-seed-01',     bgColor: 'c0aede' },
+  { name: 'PixelGroove', seed: 'pixelgroove-seed-02',  bgColor: '06b6d4' },
+  { name: 'NeonDancer',  seed: 'neondancer-seed-03',   bgColor: 'ffd5dc' },
+  { name: 'BassBot',     seed: 'bassbot-seed-04',      bgColor: '7c3aed' },
+  { name: 'SynthWave',   seed: 'synthwave-seed-05',    bgColor: 'b6e3f4' },
+  { name: 'LoFiGhost',   seed: 'lofighost-seed-06',    bgColor: 'd1fae5' },
+  { name: 'DiscoBot',    seed: 'discobot-seed-07',     bgColor: 'ffdfbf' },
+  { name: 'BeatDrifter', seed: 'beatdrifter-seed-08',  bgColor: 'fef3c7' },
+  { name: 'GlitchFox',   seed: 'glitchfox-seed-09',   bgColor: 'f472b6' },
+  { name: 'WaveRider',   seed: 'waverider-seed-10',    bgColor: '34d399' },
+]
+
 // ─── Checkerboard Dance Floor ────────────────────────────────────────────────
 
 function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[] }) {
@@ -368,37 +383,59 @@ function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[
   const ROWS = 7
 
   const sizeByRow = [48, 38, 30]
-  const opacityByRow = [1, 0.85, 0.65]
 
+  // Centered positions — crowd clusters under the stage, not spread to edges
   const rowPositions: Record<number, { x: string; y: string }[]> = {
-    0: [
-      { x: "12%", y: "55%" },
-      { x: "35%", y: "60%" },
-      { x: "58%", y: "52%" },
-      { x: "82%", y: "58%" },
+    0: [ // Front row — real users (25%–75%)
+      { x: "28%", y: "62%" },
+      { x: "42%", y: "67%" },
+      { x: "58%", y: "64%" },
+      { x: "72%", y: "60%" },
     ],
-    1: [
-      { x: "8%",  y: "35%" },
-      { x: "30%", y: "30%" },
-      { x: "55%", y: "32%" },
-      { x: "78%", y: "28%" },
+    1: [ // Middle row — bots + real overflow (20%–80%)
+      { x: "22%", y: "38%" },
+      { x: "36%", y: "34%" },
+      { x: "50%", y: "37%" },
+      { x: "64%", y: "32%" },
+      { x: "78%", y: "36%" },
     ],
-    2: [
-      { x: "15%", y: "15%" },
-      { x: "40%", y: "12%" },
-      { x: "62%", y: "18%" },
-      { x: "88%", y: "14%" },
+    2: [ // Back row — bots (15%–85%)
+      { x: "18%", y: "16%" },
+      { x: "32%", y: "13%" },
+      { x: "50%", y: "15%" },
+      { x: "68%", y: "12%" },
+      { x: "82%", y: "17%" },
     ],
   }
 
-  // Distribute members across 3 rows — skip any with missing profiles
-  const listeners = members
-    .filter(m => m.profile?.username)
-    .map((m, i) => ({
-      name: m.profile.display_name || m.profile.username,
-      url: avatarUrl(m.profile),
-      row: i % 3,
-    }))
+  const realUsers = members.filter(m => m.profile?.username)
+  const realUserCount = realUsers.length
+
+  // Real users always fill front row first, overflow to middle
+  const listeners = realUsers.map((m, i) => ({
+    name: m.profile.display_name || m.profile.username,
+    url: avatarUrl(m.profile),
+    row: i < 4 ? 0 : 1, // front row up to 4, then middle
+    isBot: false,
+    opacity: i < 4 ? 1 : 0.85,
+    animDelay: i * 0.12,
+    animDur: null as number | null,
+  }))
+
+  // Bots occupy middle and back rows; fade out when 8+ real users
+  const showBots = realUserCount < 8
+  const botOpacity = showBots ? Math.max(0.3, 0.6 * (1 - realUserCount / 8)) : 0
+  const botAvatars = showBots ? BOTS.map((bot, i) => ({
+    name: bot.name,
+    url: buildDiceBearUrl(bot.seed, bot.bgColor, 'none', 'short01'),
+    row: i < 5 ? 1 : 2, // first 5 in middle row, last 5 in back row
+    isBot: true,
+    opacity: botOpacity,
+    animDelay: 0.3 + (i * 0.22) % 1.8,
+    animDur: 1.6 + (i * 0.17) % 1.0, // slower, organic feel (1.6s–2.6s)
+  })) : []
+
+  const allAvatars = [...listeners, ...botAvatars]
 
   return (
     <section className="relative flex-1 bg-floor-bg overflow-hidden" aria-label="Dance Floor">
@@ -458,10 +495,10 @@ function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[
 
       {/* Audience avatars with depth perspective */}
       <div className="relative w-full h-full min-h-[240px] md:min-h-[300px]">
-        {listeners.map((listener, i) => {
-          const rowIdx = listener.row
+        {allAvatars.map((avatar, i) => {
+          const rowIdx = avatar.row
           const positionsForRow = rowPositions[rowIdx] || rowPositions[2]
-          const avatarsInThisRowBefore = listeners.filter((l, j) => l.row === rowIdx && j < i).length
+          const avatarsInThisRowBefore = allAvatars.filter((a, j) => a.row === rowIdx && j < i).length
           const pos = positionsForRow[avatarsInThisRowBefore % positionsForRow.length]
           const size = sizeByRow[rowIdx] || 30
           const isAlt = i % 2 === 0
@@ -473,23 +510,24 @@ function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[
               style={{
                 left: pos.x,
                 top: pos.y,
-                animationDelay: `${i * 0.12}s`,
+                animationDelay: `${avatar.animDelay}s`,
+                ...(avatar.animDur ? { animationDuration: `${avatar.animDur}s` } : {}),
                 transform: "translate(-50%, -50%)",
-                opacity: opacityByRow[rowIdx],
+                opacity: avatar.opacity,
                 zIndex: (rowIdx + 1) * 10,
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={listener.url}
-                alt={`${listener.name}'s avatar`}
+                src={avatar.url}
+                alt={`${avatar.name}'s avatar`}
                 width={size}
                 height={size}
                 className="rounded"
                 crossOrigin="anonymous"
               />
-              <span className="text-[7px] text-text-primary/70 truncate max-w-14 text-center">
-                {listener.name}
+              <span className={`text-[7px] truncate max-w-14 text-center ${avatar.isBot ? 'text-text-muted/50' : 'text-text-primary/70'}`}>
+                {avatar.name}
               </span>
             </div>
           )

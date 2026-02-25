@@ -82,9 +82,8 @@ export async function POST(
       .single()
 
     if (djEntry && Array.isArray(djEntry.songs) && djEntry.songs.length > 0) {
-      // Pop the first song and play the next
-      const [, ...remaining] = djEntry.songs as TrackInfo[]
-      const nextTrack = remaining[0] as TrackInfo | undefined
+      // Pop the first song and play it
+      const [nextTrack, ...remaining] = djEntry.songs as TrackInfo[]
 
       // Update the DJ's songs array
       await supabase
@@ -121,7 +120,21 @@ export async function POST(
     }
   }
 
-  // No more songs for this DJ — rotate to the next occupied spot
+  // No more songs for this DJ — rotate to the next occupied spot.
+  // Clear all video/track fields first so hasVideo resets to false for the
+  // incoming DJ. advance_dj_queue pre-dates these columns so it won't clear them.
+  await supabase
+    .from('rooms')
+    .update({
+      current_video_id: null,
+      current_video_title: null,
+      current_video_thumbnail: null,
+      video_started_at: null,
+      current_track_url: null,
+      current_track_source: null,
+    })
+    .eq('id', roomId)
+
   const { error: advanceError } = await supabase.rpc('advance_dj_queue', {
     p_room_id: roomId,
   })
