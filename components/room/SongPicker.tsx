@@ -68,7 +68,7 @@ export default function SongPicker({ onPlay, onCancel }: SongPickerProps) {
         const data = await res.json()
         setPreview({ title: data.title ?? 'SoundCloud Track', trackUrl: detected.url })
       } else if (detected.type === 'suno') {
-        const res = await fetch(`/api/suno-track?id=${detected.id}`)
+        const res = await fetch(`/api/suno-track?url=${encodeURIComponent(detected.url)}`)
         if (!res.ok) throw new Error('Could not fetch Suno track info')
         const data = await res.json()
         setPreview({ title: data.title ?? 'Suno Track', trackUrl: data.audioUrl })

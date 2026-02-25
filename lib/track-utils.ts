@@ -21,16 +21,16 @@ export function detectTrackSource(input: string): TrackSourceResult {
     return { type: 'youtube', id: url, url: `https://www.youtube.com/watch?v=${url}` }
   }
 
-  // SoundCloud: soundcloud.com/artist/track
-  if (/soundcloud\.com\/[^/\s]+\/[^/\s]+/.test(url)) {
+  // SoundCloud: full URLs (soundcloud.com/artist/track) or shortened (on.soundcloud.com/id)
+  if (/(?:on\.soundcloud\.com\/[^/\s]+|soundcloud\.com\/[^/\s]+\/[^/\s]+)/.test(url)) {
     return { type: 'soundcloud', id: url, url }
   }
 
-  // Suno: suno.com/song/[uuid] or suno.ai/song/[uuid]
-  const sunoMatch = url.match(
-    /suno\.(?:com|ai)\/(?:song\/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
-  )
-  if (sunoMatch) return { type: 'suno', id: sunoMatch[1], url }
+  // Suno: full song UUID, short /s/ links, or suno.ai variants
+  if (/suno\.(?:com|ai)\/(song\/[0-9a-f-]{36}|s\/[a-zA-Z0-9]+)/.test(url)) {
+    const uuidMatch = url.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)
+    return { type: 'suno', id: uuidMatch?.[1] ?? url, url }
+  }
 
   return { type: 'unknown', id: '', url }
 }
