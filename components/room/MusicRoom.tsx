@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import {
   ThumbsUp,
   ThumbsDown,
-  MessageCircle,
   SkipForward,
   Send,
   Music,
@@ -14,13 +13,18 @@ import {
   ChevronLeft,
   Star,
   Zap,
+  Settings,
+  Trash2,
+  Crown,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { buildDiceBearUrl, seedToColor } from "@/lib/avatar"
 import TrackPlayer from "@/components/room/TrackPlayer"
 import AuthPromptModal from "@/components/ui/AuthPromptModal"
+import MyQueuePanel from "@/components/room/MyQueuePanel"
+import RoomSettings from "@/components/room/RoomSettings"
 import { getSourceBadge } from "@/lib/track-utils"
-import type { DJQueueEntry, Profile, Room, RoomMember, SongHistoryEntry, TrackSource, Vote, VoteCounts, VoteType } from "@/types"
+import type { DJQueueEntry, Profile, Room, RoomMember, SongHistoryEntry, TrackInfo, TrackSource, Vote, VoteCounts, VoteType } from "@/types"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -51,6 +55,13 @@ interface MusicRoomProps {
   onSkip: () => void
   onEnded: () => void
   onVote: (type: VoteType) => void
+  // New: queue management + room admin
+  currentUserDJEntry: (DJQueueEntry & { profile: Profile }) | null
+  onRemoveFromQueue: (userId: string) => Promise<void>
+  onUpdateDJSongs: (songs: TrackInfo[]) => Promise<void>
+  onDeleteRoom: () => Promise<void>
+  onUpdateRoomName: (name: string) => Promise<void>
+  onTransferOwnership: (username: string) => Promise<{ error?: string }>
 }
 
 // ─── Avatar URL helper ──────────────────────────────────────────────────────
@@ -175,6 +186,8 @@ function DJStage({
   currentUserId,
   joiningQueue,
   sessionPoints,
+  queue,
+  activeDJSpot,
   onPickSong,
   onJoinQueue,
 }: {
@@ -184,6 +197,8 @@ function DJStage({
   currentUserId: string | null
   joiningQueue: boolean
   sessionPoints: number
+  queue: (DJQueueEntry & { profile: Profile })[]
+  activeDJSpot: number | null
   onPickSong: () => void
   onJoinQueue: () => void
 }) {
@@ -295,6 +310,53 @@ function DJStage({
         className="w-full max-w-md h-4 opacity-30 -mt-1"
         style={{ background: "radial-gradient(ellipse at top, rgba(6,182,212,0.4), transparent)" }}
       />
+
+      {/* 3-Spot Podium Row */}
+      <div className="relative z-10 flex items-end justify-center gap-6 px-4 pb-2 pt-1 w-full max-w-md">
+        {[1, 2, 3].map((spot) => {
+          const entry = queue.find((q) => q.spot === spot)
+          const isActive = spot === activeDJSpot
+          const p = entry?.profile
+          return (
+            <div key={spot} className="flex flex-col items-center gap-1 relative">
+              {isActive && (
+                <Crown className="w-3 h-3 text-neon-cyan absolute -top-4" />
+              )}
+              {p ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={buildDiceBearUrl(
+                      p.avatar_seed || p.username,
+                      p.avatar_seed ? p.avatar_bg_color : seedToColor(p.username),
+                      p.avatar_accessory || 'none',
+                      p.avatar_hair || 'short01'
+                    )}
+                    alt={p.display_name || p.username}
+                    width={isActive ? 36 : 26}
+                    height={isActive ? 36 : 26}
+                    className={`rounded transition-all ${isActive ? 'ring-2 ring-neon-cyan' : 'opacity-70'}`}
+                    crossOrigin="anonymous"
+                  />
+                  <span className={`text-[7px] truncate max-w-[48px] text-center ${isActive ? 'text-neon-cyan' : 'text-text-muted'}`}>
+                    {p.display_name || p.username}
+                  </span>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-0.5">
+                  <div
+                    className="rounded border border-dashed flex items-center justify-center"
+                    style={{ width: 26, height: 26, borderColor: 'rgba(124,58,237,0.3)', background: 'rgba(124,58,237,0.04)' }}
+                  >
+                    <span className="text-[10px] text-text-muted/40">?</span>
+                  </div>
+                  <span className="text-[7px] text-text-muted/40">Spot {spot}</span>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </section>
   )
 }
@@ -507,12 +569,16 @@ function NowPlayingBar({
   roomName,
   listenerCount,
   trackSource,
+  showSettings,
+  onOpenSettings,
 }: {
   track: string
   artist: string
   roomName: string
   listenerCount: number
   trackSource: TrackSource | null
+  showSettings: boolean
+  onOpenSettings: () => void
 }) {
   const badge = trackSource ? getSourceBadge(trackSource) : null
 
@@ -582,6 +648,15 @@ function NowPlayingBar({
             />
           ))}
         </div>
+        {showSettings && (
+          <button
+            onClick={onOpenSettings}
+            className="p-1.5 rounded-md text-text-muted hover:text-neon-cyan hover:bg-neon-cyan/10 transition-colors"
+            title="Room Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </header>
   )
@@ -628,6 +703,7 @@ function VoteControls({
   playbackElapsed,
   disabled,
   isCurrentDJ,
+  isAdminOrOwner,
   onVote,
   onSkip,
 }: {
@@ -635,6 +711,7 @@ function VoteControls({
   playbackElapsed: number
   disabled: boolean
   isCurrentDJ: boolean
+  isAdminOrOwner: boolean
   onVote: (type: VoteType) => void
   onSkip: () => void
 }) {
@@ -682,7 +759,7 @@ function VoteControls({
 
         {/* Center controls */}
         <div className="flex items-center gap-2 md:gap-3">
-          {isCurrentDJ && (
+          {(isCurrentDJ || isAdminOrOwner) && (
             <button
               onClick={onSkip}
               className="p-2 md:p-2.5 rounded-lg border border-border bg-bg-secondary text-text-muted hover:border-neon-purple/50 hover:text-neon-purple transition-all"
@@ -817,7 +894,10 @@ function RightSidebar({
   currentUserName,
   disabled,
   songHistory,
+  isAdminOrOwner,
+  activeDJSpot,
   onSendChat,
+  onRemoveFromQueue,
 }: {
   queue: (DJQueueEntry & { profile: Profile })[]
   voteCounts: VoteCounts
@@ -825,7 +905,10 @@ function RightSidebar({
   currentUserName: string | null
   disabled: boolean
   songHistory: SongHistoryEntry[]
+  isAdminOrOwner: boolean
+  activeDJSpot: number | null
   onSendChat: (text: string) => void
+  onRemoveFromQueue: (userId: string) => Promise<void>
 }) {
   const [collapsed, setCollapsed] = useState(false)
 
@@ -845,30 +928,57 @@ function RightSidebar({
         </div>
       ) : (
         <>
-          {/* DJ Queue */}
+          {/* DJ Queue — 3 fixed spots */}
           <div className="p-3 border-b border-border">
             <span className="text-[8px] text-neon-cyan uppercase tracking-widest neon-text-cyan">
-              DJ Queue
+              DJ Spots
             </span>
-            <div className="flex flex-col gap-2.5 mt-2">
-              {queue.length === 0 && (
-                <p className="text-[9px] text-text-muted">Queue is empty</p>
-              )}
-              {queue.map((entry, i) => {
-                const p = entry.profile
+            <div className="flex flex-col gap-2 mt-2">
+              {[1, 2, 3].map((spot) => {
+                const entry = queue.find((q) => q.spot === spot)
+                const isActive = spot === activeDJSpot
+                const p = entry?.profile
                 return (
-                  <div key={entry.id} className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={avatarUrl(p)}
-                      alt={p.display_name || p.username}
-                      width={28}
-                      height={28}
-                      className="rounded"
-                      crossOrigin="anonymous"
-                    />
-                    <span className="text-[9px] text-text-primary/80">{p.display_name || p.username}</span>
-                    <span className="text-[7px] text-text-muted ml-auto">#{i + 2}</span>
+                  <div
+                    key={spot}
+                    className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors ${isActive ? 'bg-neon-cyan/10 border border-neon-cyan/20' : 'border border-transparent'}`}
+                  >
+                    <span className={`text-[8px] font-mono shrink-0 ${isActive ? 'text-neon-cyan' : 'text-text-muted'}`}>
+                      {isActive ? '▶' : spot}
+                    </span>
+                    {p ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={avatarUrl(p)}
+                          alt={p.display_name || p.username}
+                          width={22}
+                          height={22}
+                          className="rounded shrink-0"
+                          crossOrigin="anonymous"
+                        />
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className={`text-[9px] truncate ${isActive ? 'text-neon-cyan' : 'text-text-primary/80'}`}>
+                            {p.display_name || p.username}
+                            {p.is_admin && <span className="ml-1 text-neon-purple" title="Admin">⚡</span>}
+                          </span>
+                          {entry && entry.songs.length > 0 && (
+                            <span className="text-[7px] text-text-muted">{entry.songs.length} song{entry.songs.length !== 1 ? 's' : ''} queued</span>
+                          )}
+                        </div>
+                        {isAdminOrOwner && (
+                          <button
+                            onClick={() => onRemoveFromQueue(entry!.user_id)}
+                            className="text-text-muted hover:text-accent-red transition-colors shrink-0"
+                            title="Remove DJ from spot"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-[8px] text-text-muted/50 italic">Empty</span>
+                    )}
                   </div>
                 )
               })}
@@ -882,30 +992,20 @@ function RightSidebar({
                 Recent Tracks
               </span>
               <div className="flex flex-col gap-2 mt-2">
-                {songHistory.map((entry) => (
-                  <div key={entry.id} className="flex items-center gap-2">
-                    {entry.thumbnail ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={entry.thumbnail}
-                        alt=""
-                        width={28}
-                        height={28}
-                        className="rounded shrink-0 object-cover"
-                      />
-                    ) : (
-                      <div className="w-7 h-7 rounded shrink-0 bg-bg-secondary flex items-center justify-center">
-                        <Music className="w-3 h-3 text-text-muted" />
+                {songHistory.map((entry) => {
+                  const srcBadge = entry.track_source ? getSourceBadge(entry.track_source as TrackSource) : null
+                  return (
+                    <div key={entry.id} className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded shrink-0 bg-bg-secondary flex items-center justify-center text-base">
+                        {srcBadge ? srcBadge.emoji : <Music className="w-3 h-3 text-text-muted" />}
                       </div>
-                    )}
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[9px] text-text-primary/80 truncate leading-tight">{entry.title}</span>
-                      <span className="text-[7px] text-text-muted">
-                        {entry.dj_username ? `@${entry.dj_username}` : ''}{entry.dj_username ? ' · ' : ''}{timeAgo(entry.played_at)}
-                      </span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[9px] text-text-primary/80 truncate leading-tight">{entry.track_title || 'Unknown'}</span>
+                        <span className="text-[7px] text-text-muted">{timeAgo(entry.played_at)}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
@@ -952,16 +1052,27 @@ export default function MusicRoom({
   onSkip,
   onEnded,
   onVote,
+  currentUserDJEntry,
+  onRemoveFromQueue,
+  onUpdateDJSongs,
+  onDeleteRoom,
+  onUpdateRoomName,
+  onTransferOwnership,
 }: MusicRoomProps) {
   const supabase = createClient()
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [bursts, setBursts] = useState<number[]>([])
   const [songHistory, setSongHistory] = useState<SongHistoryEntry[]>([])
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   // Stable ref so join/leave callbacks always see the latest profile
   const currentUserProfileRef = useRef(currentUserProfile)
   useEffect(() => { currentUserProfileRef.current = currentUserProfile }, [currentUserProfile])
+
+  const isOwner = !!currentUserId && (room.owner_id === currentUserId || room.created_by === currentUserId)
+  const isAdmin = currentUserProfile?.is_admin === true
+  const isAdminOrOwner = isOwner || isAdmin
 
   function handleVote(type: VoteType) {
     if (type === 'awesome') {
@@ -1089,6 +1200,16 @@ export default function MusicRoom({
         />
       )}
 
+      {/* Room Settings Modal */}
+      <RoomSettings
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        room={room}
+        onDeleteRoom={onDeleteRoom}
+        onUpdateName={onUpdateRoomName}
+        onTransferOwnership={onTransferOwnership}
+      />
+
       {/* Now Playing Bar */}
       <NowPlayingBar
         track={track}
@@ -1096,6 +1217,8 @@ export default function MusicRoom({
         roomName={room.name}
         listenerCount={members.length}
         trackSource={(room.current_track_source as TrackSource) ?? null}
+        showSettings={isAdminOrOwner}
+        onOpenSettings={() => setShowSettings(true)}
       />
 
       {/* Main content */}
@@ -1108,9 +1231,23 @@ export default function MusicRoom({
             currentUserId={currentUserId}
             joiningQueue={joiningQueue}
             sessionPoints={sessionPoints}
+            queue={queue}
+            activeDJSpot={room.active_dj_spot ?? null}
             onPickSong={onPickSong}
             onJoinQueue={handleJoinQueue}
           />
+
+          {/* My Queue Panel — only visible to the active DJ */}
+          {isCurrentDJ && currentUserDJEntry && (
+            <div className="px-4 py-2 border-b border-border bg-bg-secondary/30">
+              <MyQueuePanel
+                songs={currentUserDJEntry.songs}
+                isPlaying={isCurrentDJ}
+                onUpdate={onUpdateDJSongs}
+              />
+            </div>
+          )}
+
           <DanceFloor members={members} />
         </div>
         <RightSidebar
@@ -1120,7 +1257,10 @@ export default function MusicRoom({
           currentUserName={currentUserProfile ? (currentUserProfile.display_name || currentUserProfile.username) : null}
           disabled={!currentUserId}
           songHistory={songHistory}
+          isAdminOrOwner={isAdminOrOwner}
+          activeDJSpot={room.active_dj_spot ?? null}
           onSendChat={handleSendChat}
+          onRemoveFromQueue={onRemoveFromQueue}
         />
       </div>
 
@@ -1131,6 +1271,7 @@ export default function MusicRoom({
           playbackElapsed={playbackElapsed}
           disabled={!currentUserId}
           isCurrentDJ={isCurrentDJ}
+          isAdminOrOwner={isAdminOrOwner}
           onVote={handleVote}
           onSkip={onSkip}
         />

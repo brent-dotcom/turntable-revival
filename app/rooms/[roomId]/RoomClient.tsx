@@ -22,16 +22,24 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
     queue,
     votes,
     currentDJProfile,
+    currentUserProfile,
     voteCounts,
     isLoading,
     error,
     currentUserId,
+    currentUserIsOwner,
+    currentUserIsAdmin,
     playbackElapsed,
     joinQueue,
     leaveQueue,
     playSong,
     skipSong,
     castVote,
+    removeFromQueue,
+    updateDJSongs,
+    deleteRoom,
+    updateRoomName,
+    transferOwnership,
   } = useRoom(roomId)
 
   const router = useRouter()
@@ -40,11 +48,12 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
   const skippingRef = useRef(false)
 
   const isCurrentDJ = room?.current_dj_id === currentUserId
-  // A track is active when any source has started playing
   const hasVideo = !!room?.current_video_id || !!room?.current_track_url
-  const currentUserProfile = members.find((m) => m.user_id === currentUserId)?.profile ?? null
 
-  // Prompt DJ to pick a song when they're up but no track is playing
+  // The current user's queue entry (contains their songs array)
+  const currentUserDJEntry = queue.find((q) => q.user_id === currentUserId) ?? null
+
+  // Prompt the active DJ to pick a song when it's their turn and nothing is playing
   useEffect(() => {
     if (isCurrentDJ && !hasVideo) {
       setShowSongPicker(true)
@@ -62,6 +71,11 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
     skippingRef.current = true
     await skipSong()
     setTimeout(() => { skippingRef.current = false }, 10_000)
+  }
+
+  async function handleDeleteRoom() {
+    await deleteRoom()
+    router.push('/rooms')
   }
 
   if (isLoading) {
@@ -112,6 +126,12 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
         onSkip={skipSong}
         onEnded={handleSongEnded}
         onVote={castVote}
+        currentUserDJEntry={currentUserDJEntry}
+        onRemoveFromQueue={removeFromQueue}
+        onUpdateDJSongs={updateDJSongs}
+        onDeleteRoom={handleDeleteRoom}
+        onUpdateRoomName={updateRoomName}
+        onTransferOwnership={transferOwnership}
       />
 
       <Modal

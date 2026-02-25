@@ -37,6 +37,17 @@ export default async function RoomsPage() {
     dj_profile: r.current_dj_id ? (profileMap[r.current_dj_id] ?? null) : null,
   }))
 
+  // Check if current user is admin
+  let isAdmin = false
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    isAdmin = profile?.is_admin === true
+  }
+
   return (
     <div className="min-h-screen bg-bg-primary">
       {/* Nav */}
@@ -67,7 +78,7 @@ export default async function RoomsPage() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <LobbyClient initialRooms={enrichedRooms} isLoggedIn={!!user} />
+        <LobbyClient initialRooms={enrichedRooms} isLoggedIn={!!user} isAdmin={isAdmin} />
       </div>
     </div>
   )

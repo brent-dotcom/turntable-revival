@@ -1,4 +1,22 @@
 // ============================================================
+// Track / Multi-source Types (defined first — used by DJQueueEntry)
+// ============================================================
+
+export type TrackSource = 'youtube' | 'soundcloud' | 'suno'
+
+/** Unified track info passed from SongPicker → playSong → DB */
+export interface TrackInfo {
+  source: TrackSource
+  /** YouTube video ID (YouTube only) */
+  videoId?: string
+  /** SoundCloud page URL or Suno CDN audio URL */
+  trackUrl: string
+  title: string
+  /** YouTube thumbnail URL (YouTube only) */
+  thumbnail?: string
+}
+
+// ============================================================
 // Database Types
 // ============================================================
 
@@ -19,6 +37,7 @@ export interface Profile {
   id: string
   username: string
   display_name: string | null
+  is_admin: boolean
   // Legacy fields (still in DB)
   avatar_type: AvatarType
   avatar_color: string
@@ -39,7 +58,11 @@ export interface Room {
   description: string | null
   genre: string | null
   created_by: string | null
+  /** Transferable ownership — may differ from created_by */
+  owner_id: string | null
   current_dj_id: string | null
+  /** Which podium spot (1/2/3) is currently active */
+  active_dj_spot: number | null
   current_video_id: string | null
   current_video_title: string | null
   current_video_thumbnail: string | null
@@ -58,11 +81,10 @@ export interface Room {
 export interface SongHistoryEntry {
   id: string
   room_id: string
-  video_id: string
-  title: string
-  thumbnail: string | null
-  dj_id: string | null
-  dj_username: string | null
+  played_by_user_id: string | null
+  track_url: string | null
+  track_title: string | null
+  track_source: string | null
   played_at: string
 }
 
@@ -85,6 +107,10 @@ export interface DJQueueEntry {
   room_id: string
   user_id: string
   position: number
+  /** Podium spot number: 1, 2, or 3 */
+  spot: number
+  /** Ordered array of queued TrackInfo objects (max 3) */
+  songs: TrackInfo[]
   created_at: string
   // Joined
   profile?: Profile
@@ -121,24 +147,6 @@ export interface VoteCounts {
   awesomePercent: number
   lamePercent: number
   userVote: VoteType | null
-}
-
-// ============================================================
-// Track / Multi-source Types
-// ============================================================
-
-export type TrackSource = 'youtube' | 'soundcloud' | 'suno'
-
-/** Unified track info passed from SongPicker → playSong → DB */
-export interface TrackInfo {
-  source: TrackSource
-  /** YouTube video ID (YouTube only) */
-  videoId?: string
-  /** SoundCloud page URL or Suno CDN audio URL */
-  trackUrl: string
-  title: string
-  /** YouTube thumbnail URL (YouTube only) */
-  thumbnail?: string
 }
 
 // ============================================================

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { buildDiceBearUrl, seedToColor } from '@/lib/avatar'
-import { Users, Music, Disc3, Plus, Radio } from 'lucide-react'
+import { Users, Music, Disc3, Plus, Radio, Trash2, ShieldCheck } from 'lucide-react'
 import type { RoomWithDJ } from '@/types'
 
 // ─── Genre badge colours ─────────────────────────────────────────────────────
@@ -66,16 +66,17 @@ async function fetchRoomWithDJ(
 
 // ─── Room Card ───────────────────────────────────────────────────────────────
 
-function RoomCard({ room }: { room: RoomWithDJ }) {
+function RoomCard({ room, isAdmin, onDelete }: { room: RoomWithDJ; isAdmin: boolean; onDelete: (id: string) => void }) {
   const isPlaying = !!room.current_video_id
   const djName = room.dj_profile?.display_name || room.dj_profile?.username
   const genreStyle = room.genre ? (GENRE_STYLE[room.genre] ?? DEFAULT_GENRE_STYLE) : null
   const isEmpty = room.listener_count === 0
 
   return (
+  <div className="relative group">
     <Link
       href={`/rooms/${room.id}`}
-      className="group flex flex-col bg-bg-card border rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-0.5"
+      className="flex flex-col bg-bg-card border rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-0.5"
       style={{
         borderColor: isPlaying ? 'rgba(124,58,237,0.5)' : 'rgba(42,40,69,1)',
         boxShadow: isPlaying
@@ -173,6 +174,18 @@ function RoomCard({ room }: { room: RoomWithDJ }) {
         </div>
       )}
     </Link>
+
+    {/* Admin delete button — outside the Link to avoid nested interactive */}
+    {isAdmin && (
+      <button
+        onClick={(e) => { e.preventDefault(); onDelete(room.id) }}
+        className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-accent-red/20 text-accent-red border border-accent-red/40 hover:bg-accent-red/30 transition-colors opacity-0 group-hover:opacity-100"
+        title="Admin: delete room"
+      >
+        <Trash2 size={13} />
+      </button>
+    )}
+  </div>
   )
 }
 
@@ -181,11 +194,18 @@ function RoomCard({ room }: { room: RoomWithDJ }) {
 interface LobbyClientProps {
   initialRooms: RoomWithDJ[]
   isLoggedIn: boolean
+  isAdmin: boolean
 }
 
-export default function LobbyClient({ initialRooms, isLoggedIn }: LobbyClientProps) {
+export default function LobbyClient({ initialRooms, isLoggedIn, isAdmin }: LobbyClientProps) {
   const [rooms, setRooms] = useState<RoomWithDJ[]>(initialRooms)
   const supabase = createClient()
+
+  async function handleAdminDelete(id: string) {
+    if (!confirm('Delete this room? Cannot be undone.')) return
+    await supabase.from('rooms').delete().eq('id', id)
+    setRooms((prev) => prev.filter((r) => r.id !== id))
+  }
 
   // ── Realtime subscription ──────────────────────────────────────────────────
   useEffect(() => {
@@ -264,6 +284,15 @@ export default function LobbyClient({ initialRooms, isLoggedIn }: LobbyClientPro
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 px-3 py-2 text-accent-purple border border-accent-purple/40 text-sm font-semibold rounded-lg hover:bg-accent-purple/10 transition-colors"
+            >
+              <ShieldCheck size={14} />
+              Admin
+            </Link>
+          )}
           {isLoggedIn ? (
             <Link
               href="/rooms/create"
@@ -301,7 +330,7 @@ export default function LobbyClient({ initialRooms, isLoggedIn }: LobbyClientPro
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sorted.map((room) => (
-            <RoomCard key={room.id} room={room} />
+            <RoomCard key={room.id} room={room} isAdmin={isAdmin} onDelete={handleAdminDelete} />
           ))}
         </div>
       )}
