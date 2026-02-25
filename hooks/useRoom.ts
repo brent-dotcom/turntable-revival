@@ -6,10 +6,10 @@ import type {
   Profile,
   Room,
   RoomMember,
+  TrackInfo,
   Vote,
   VoteCounts,
   VoteType,
-  YouTubeVideoInfo,
 } from '@/types'
 import { getElapsedSeconds } from '@/lib/utils'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -28,7 +28,7 @@ interface UseRoomReturn {
   // Actions
   joinQueue: () => Promise<void>
   leaveQueue: () => Promise<void>
-  playSong: (video: YouTubeVideoInfo) => Promise<void>
+  playSong: (track: TrackInfo) => Promise<void>
   skipSong: () => Promise<void>
   castVote: (type: VoteType) => Promise<void>
 }
@@ -339,13 +339,15 @@ export function useRoom(roomId: string): UseRoomReturn {
       .eq('user_id', currentUserId)
   }, [currentUserId, roomId, supabase])
 
-  const playSong = useCallback(async (video: YouTubeVideoInfo) => {
+  const playSong = useCallback(async (track: TrackInfo) => {
     await supabase
       .from('rooms')
       .update({
-        current_video_id: video.videoId,
-        current_video_title: video.title,
-        current_video_thumbnail: video.thumbnail,
+        current_video_id: track.videoId ?? null,
+        current_video_title: track.title,
+        current_video_thumbnail: track.thumbnail ?? null,
+        current_track_source: track.source,
+        current_track_url: track.trackUrl,
         video_started_at: new Date().toISOString(),
       })
       .eq('id', roomId)

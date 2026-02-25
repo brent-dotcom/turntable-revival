@@ -1,99 +1,169 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { extractYouTubeId, getYouTubeThumbnail } from '@/lib/utils'
-import type { YouTubeVideoInfo } from '@/types'
-import { Music, Search, X } from 'lucide-react'
+import { detectTrackSource, getSourceBadge } from '@/lib/track-utils'
+import { getYouTubeThumbnail } from '@/lib/utils'
+import type { TrackInfo } from '@/types'
+import { Music, Search } from 'lucide-react'
 import Image from 'next/image'
 
 interface SongPickerProps {
-  onPlay: (video: YouTubeVideoInfo) => void
+  onPlay: (track: TrackInfo) => void
   onCancel?: () => void
+}
+
+interface TrackPreview {
+  title: string
+  thumbnail?: string
+  trackUrl: string
 }
 
 export default function SongPicker({ onPlay, onCancel }: SongPickerProps) {
   const [input, setInput] = useState('')
-  const [preview, setPreview] = useState<YouTubeVideoInfo | null>(null)
+  const [preview, setPreview] = useState<TrackPreview | null>(null)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function handleLookup() {
+  const detected = input.trim() ? detectTrackSource(input.trim()) : null
+  const badge = detected && detected.type !== 'unknown' ? getSourceBadge(detected.type) : null
+
+  // Auto-fetch preview when URL changes (debounced)
+  useEffect(() => {
+    setPreview(null)
     setError('')
-    const id = extractYouTubeId(input.trim())
-    if (!id) {
-      setError('Enter a valid YouTube URL or video ID (e.g. dQw4w9WgXcQ)')
-      return
+
+    if (!detected || detected.type === 'unknown') return
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      fetchPreview()
+    }, 600)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-    setPreview({
-      videoId: id,
-      title: 'Loading title…',
-      thumbnail: getYouTubeThumbnail(id),
-    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input])
+
+  async function fetchPreview() {
+    if (!detected || detected.type === 'unknown') return
+    setLoading(true)
+    setError('')
+
+    try {
+      if (detected.type === 'youtube') {
+        setPreview({
+          title: 'YouTube Video',
+          thumbnail: getYouTubeThumbnail(detected.id),
+          trackUrl: detected.url,
+        })
+      } else if (detected.type === 'soundcloud') {
+        const res = await fetch(
+          `https://soundcloud.com/oembed?format=json&url=${encodeURIComponent(detected.url)}`
+        )
+        if (!res.ok) throw new Error('Could not fetch SoundCloud info')
+        const data = await res.json()
+        setPreview({ title: data.title ?? 'SoundCloud Track', trackUrl: detected.url })
+      } else if (detected.type === 'suno') {
+        const res = await fetch(`/api/suno-track?id=${detected.id}`)
+        if (!res.ok) throw new Error('Could not fetch Suno track info')
+        const data = await res.json()
+        setPreview({ title: data.title ?? 'Suno Track', trackUrl: data.audioUrl })
+      }
+    } catch {
+      setError('Could not load track info — check the URL and try again')
+    } finally {
+      setLoading(false)
+    }
   }
 
   function handlePlay() {
-    if (!preview) return
-    onPlay(preview)
+    if (!detected || detected.type === 'unknown' || !preview) return
+    const track: TrackInfo = {
+      source: detected.type,
+      videoId: detected.type === 'youtube' ? detected.id : undefined,
+      trackUrl: preview.trackUrl,
+      title: preview.title,
+      thumbnail: preview.thumbnail,
+    }
+    onPlay(track)
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <p className="text-sm text-text-secondary">
-          Paste a YouTube URL or video ID to queue your song.
-        </p>
-      </div>
+      <p className="text-sm text-text-secondary">
+        Paste a YouTube, SoundCloud, or Suno URL to queue your song.
+      </p>
 
+      {/* URL input */}
       <div className="flex gap-2">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="youtube.com/watch?v=... or video ID"
-          error={error}
-          onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
-          className="flex-1"
-        />
-        <Button variant="secondary" onClick={handleLookup} className="flex-shrink-0">
+        <div className="flex-1">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="youtube.com/watch?v=…  |  soundcloud.com/…  |  suno.com/song/…"
+            onKeyDown={(e) => e.key === 'Enter' && fetchPreview()}
+            className="flex-1"
+          />
+          {/* Source badge */}
+          {badge && (
+            <p className="text-xs text-text-muted mt-1 ml-1">
+              {badge.emoji} Detected: <span className="text-text-primary font-semibold">{badge.label}</span>
+            </p>
+          )}
+          {detected?.type === 'unknown' && input.trim().length > 5 && (
+            <p className="text-xs text-accent-red mt-1 ml-1">
+              ❓ Unrecognized URL — paste a YouTube, SoundCloud, or Suno link
+            </p>
+          )}
+        </div>
+        <Button
+          variant="secondary"
+          onClick={fetchPreview}
+          loading={loading}
+          className="flex-shrink-0"
+        >
           <Search size={16} />
         </Button>
       </div>
 
+      {/* Error */}
+      {error && <p className="text-xs text-accent-red">{error}</p>}
+
+      {/* Preview card */}
       {preview && (
         <div className="flex gap-3 p-3 bg-bg-secondary rounded-xl border border-border animate-fade-in">
-          <div className="relative w-24 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-bg-card">
-            <Image
-              src={preview.thumbnail}
-              alt="Video thumbnail"
-              fill
-              className="object-cover"
-            />
-          </div>
+          {preview.thumbnail && (
+            <div className="relative w-24 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-bg-card">
+              <Image src={preview.thumbnail} alt="Track thumbnail" fill className="object-cover" />
+            </div>
+          )}
+          {!preview.thumbnail && badge && (
+            <div className="w-14 h-14 flex-shrink-0 rounded-lg bg-bg-card flex items-center justify-center text-2xl">
+              {badge.emoji}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <Input
               value={preview.title}
-              onChange={(e) =>
-                setPreview((p) => p ? { ...p, title: e.target.value } : null)
-              }
-              placeholder="Song title (optional)"
+              onChange={(e) => setPreview((p) => p ? { ...p, title: e.target.value } : null)}
+              placeholder="Track title"
               className="text-sm py-1"
             />
-            <p className="text-xs text-text-muted mt-1 font-mono">ID: {preview.videoId}</p>
+            <p className="text-xs text-text-muted mt-1 truncate">{detected?.url}</p>
           </div>
-          <button
-            onClick={() => setPreview(null)}
-            className="text-text-muted hover:text-text-primary transition-colors flex-shrink-0"
-          >
-            <X size={16} />
-          </button>
         </div>
       )}
 
+      {/* Actions */}
       <div className="flex gap-2">
         <Button
           variant="primary"
           onClick={handlePlay}
-          disabled={!preview}
+          disabled={!preview || loading}
           className="flex-1"
         >
           <Music size={16} />

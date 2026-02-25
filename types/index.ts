@@ -45,6 +45,9 @@ export interface Room {
   current_video_thumbnail: string | null
   video_started_at: string | null
   last_skipped_at: string | null
+  /** Multi-source fields — added via migration */
+  current_track_source: string | null
+  current_track_url: string | null
   lame_threshold: number
   is_active: boolean
   listener_count: number
@@ -121,7 +124,25 @@ export interface VoteCounts {
 }
 
 // ============================================================
-// YouTube Types
+// Track / Multi-source Types
+// ============================================================
+
+export type TrackSource = 'youtube' | 'soundcloud' | 'suno'
+
+/** Unified track info passed from SongPicker → playSong → DB */
+export interface TrackInfo {
+  source: TrackSource
+  /** YouTube video ID (YouTube only) */
+  videoId?: string
+  /** SoundCloud page URL or Suno CDN audio URL */
+  trackUrl: string
+  title: string
+  /** YouTube thumbnail URL (YouTube only) */
+  thumbnail?: string
+}
+
+// ============================================================
+// YouTube Types (legacy, kept for reference)
 // ============================================================
 
 export interface YouTubeVideoInfo {

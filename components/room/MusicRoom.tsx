@@ -17,9 +17,10 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { buildDiceBearUrl, seedToColor } from "@/lib/avatar"
-import YouTubePlayer from "@/components/room/YouTubePlayer"
+import TrackPlayer from "@/components/room/TrackPlayer"
 import AuthPromptModal from "@/components/ui/AuthPromptModal"
-import type { DJQueueEntry, Profile, Room, RoomMember, SongHistoryEntry, Vote, VoteCounts, VoteType } from "@/types"
+import { getSourceBadge } from "@/lib/track-utils"
+import type { DJQueueEntry, Profile, Room, RoomMember, SongHistoryEntry, TrackSource, Vote, VoteCounts, VoteType } from "@/types"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -505,12 +506,16 @@ function NowPlayingBar({
   artist,
   roomName,
   listenerCount,
+  trackSource,
 }: {
   track: string
   artist: string
   roomName: string
   listenerCount: number
+  trackSource: TrackSource | null
 }) {
+  const badge = trackSource ? getSourceBadge(trackSource) : null
+
   return (
     <header className="flex items-center justify-between px-3 md:px-6 py-3 bg-bg-card border-b border-border animate-breathe-glow" aria-label="Now Playing">
       <div className="flex items-center gap-2 md:gap-3 min-w-0">
@@ -538,9 +543,19 @@ function NowPlayingBar({
           ))}
         </div>
         <div className="flex flex-col items-center min-w-0">
-          <span className="text-[10px] md:text-xs text-neon-cyan neon-text-cyan truncate max-w-32 md:max-w-none">
-            {track}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {badge && (
+              <span
+                className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold shrink-0"
+                style={{ background: 'rgba(124,58,237,0.2)', border: '1px solid rgba(124,58,237,0.4)', color: 'var(--neon-cyan)' }}
+              >
+                {badge.emoji} {badge.label}
+              </span>
+            )}
+            <span className="text-[10px] md:text-xs text-neon-cyan neon-text-cyan truncate max-w-32 md:max-w-none">
+              {track}
+            </span>
+          </div>
           <span className="text-[8px] md:text-[10px] text-text-muted truncate max-w-28 md:max-w-none">
             {artist}
           </span>
@@ -1063,17 +1078,15 @@ export default function MusicRoom({
       {/* CRT scanline overlay */}
       <div className="scanline-overlay absolute inset-0 z-50 pointer-events-none" />
 
-      {/* Hidden YouTube player (1px) — keeps audio alive */}
+      {/* Hidden track player — YouTube / SoundCloud / Suno */}
       {hasVideo && (
-        <div className="absolute" style={{ width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}>
-          <YouTubePlayer
-            key={room.current_video_id!}
-            videoId={room.current_video_id!}
-            startSeconds={playbackElapsed}
-            onEnded={onEnded}
-            muted={false}
-          />
-        </div>
+        <TrackPlayer
+          source={(room.current_track_source as TrackSource) ?? 'youtube'}
+          videoId={room.current_video_id ?? undefined}
+          trackUrl={room.current_track_url ?? room.current_video_id ?? ''}
+          playbackElapsed={playbackElapsed}
+          onEnded={onEnded}
+        />
       )}
 
       {/* Now Playing Bar */}
@@ -1082,6 +1095,7 @@ export default function MusicRoom({
         artist={artist}
         roomName={room.name}
         listenerCount={members.length}
+        trackSource={(room.current_track_source as TrackSource) ?? null}
       />
 
       {/* Main content */}

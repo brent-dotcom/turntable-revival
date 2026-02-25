@@ -40,10 +40,11 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
   const skippingRef = useRef(false)
 
   const isCurrentDJ = room?.current_dj_id === currentUserId
-  const hasVideo = !!room?.current_video_id
+  // A track is active when any source has started playing
+  const hasVideo = !!room?.current_video_id || !!room?.current_track_url
   const currentUserProfile = members.find((m) => m.user_id === currentUserId)?.profile ?? null
 
-  // Prompt DJ to pick a song when they're up but no video is playing
+  // Prompt DJ to pick a song when they're up but no track is playing
   useEffect(() => {
     if (isCurrentDJ && !hasVideo) {
       setShowSongPicker(true)
@@ -119,8 +120,8 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
         title="Pick a Song"
       >
         <SongPicker
-          onPlay={async (video) => {
-            await playSong(video)
+          onPlay={async (track) => {
+            await playSong(track)
             setShowSongPicker(false)
           }}
           onCancel={() => setShowSongPicker(false)}
