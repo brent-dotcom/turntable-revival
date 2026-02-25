@@ -28,6 +28,7 @@ interface ChatMessage {
   user: string
   text: string
   color: string
+  system?: boolean
 }
 
 interface MusicRoomProps {
@@ -735,16 +736,24 @@ function ChatPanel({
         </span>
       </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 max-h-[200px] md:max-h-none">
-        {messages.map((msg) => (
-          <div key={msg.id} className="flex gap-2 items-start">
-            <span className="text-[9px] md:text-[10px] shrink-0" style={{ color: msg.color }}>
-              {msg.user}:
-            </span>
-            <span className="text-[9px] md:text-[10px] text-text-primary/80 leading-relaxed break-words">
-              {msg.text}
-            </span>
-          </div>
-        ))}
+        {messages.map((msg) =>
+          msg.system ? (
+            <div key={msg.id} className="flex items-center gap-1.5 py-0.5">
+              <div className="flex-1 h-px bg-border/50" />
+              <span className="text-[8px] text-text-muted/60 italic shrink-0">{msg.text}</span>
+              <div className="flex-1 h-px bg-border/50" />
+            </div>
+          ) : (
+            <div key={msg.id} className="flex gap-2 items-start">
+              <span className="text-[9px] md:text-[10px] shrink-0" style={{ color: msg.color }}>
+                {msg.user}:
+              </span>
+              <span className="text-[9px] md:text-[10px] text-text-primary/80 leading-relaxed break-words">
+                {msg.text}
+              </span>
+            </div>
+          )
+        )}
         {messages.length === 0 && (
           <p className="text-[9px] text-text-muted text-center py-2">No messages yet</p>
         )}
@@ -887,6 +896,9 @@ export default function MusicRoom({
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [bursts, setBursts] = useState<number[]>([])
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  // Stable ref so join/leave callbacks always see the latest profile
+  const currentUserProfileRef = useRef(currentUserProfile)
+  useEffect(() => { currentUserProfileRef.current = currentUserProfile }, [currentUserProfile])
 
   function handleVote(type: VoteType) {
     if (type === 'awesome') {
@@ -912,9 +924,28 @@ export default function MusicRoom({
       .on("broadcast", { event: "message" }, ({ payload }) => {
         setChatMessages((prev) => [...prev.slice(-99), payload as ChatMessage])
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return
+        const profile = currentUserProfileRef.current
+        if (!profile) return
+        const name = profile.display_name || profile.username
+        channel.send({
+          type: 'broadcast',
+          event: 'message',
+          payload: { id: `sys-${Date.now()}`, user: '', text: `${name} joined the room 🎵`, color: '', system: true } satisfies ChatMessage,
+        })
+      })
 
     return () => {
+      const profile = currentUserProfileRef.current
+      if (profile) {
+        const name = profile.display_name || profile.username
+        channel.send({
+          type: 'broadcast',
+          event: 'message',
+          payload: { id: `sys-${Date.now()}`, user: '', text: `${name} left the room`, color: '', system: true } satisfies ChatMessage,
+        })
+      }
       channel.unsubscribe()
     }
   }, [room.id, supabase])
