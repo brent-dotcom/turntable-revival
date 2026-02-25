@@ -5,7 +5,7 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase/client'
 import type { AvatarAccessory, AvatarHair, Profile } from '@/types'
-import { Disc3, LogOut } from 'lucide-react'
+import { Disc3, LogOut, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -64,6 +64,32 @@ export default function ProfileClient({ profile, userEmail }: ProfileClientProps
 
       <div className="max-w-lg mx-auto px-4 py-8">
         <h1 className="text-xl font-bold text-text-primary mb-6">Your Profile</h1>
+
+        {/* DJ Stats */}
+        <div className="bg-bg-card border border-border rounded-2xl p-6 mb-6">
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-4">
+            DJ Stats
+          </h2>
+          <div className="flex items-center gap-4">
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.3), rgba(6,182,212,0.2))', border: '1px solid rgba(124,58,237,0.4)' }}
+            >
+              <Zap size={20} className="text-accent-purple" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-text-primary leading-none">
+                {(profile.dj_points ?? 0).toLocaleString()}
+              </p>
+              <p className="text-xs text-text-muted mt-1">Lifetime DJ Points</p>
+            </div>
+            {(profile.dj_points ?? 0) === 0 && (
+              <p className="ml-auto text-xs text-text-muted italic">
+                DJ a room to earn points ⚡
+              </p>
+            )}
+          </div>
+        </div>
 
         {/* Account info */}
         <div className="bg-bg-card border border-border rounded-2xl p-6 mb-6">

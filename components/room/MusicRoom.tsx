@@ -172,6 +172,7 @@ function DJStage({
   isCurrentDJ,
   currentUserId,
   joiningQueue,
+  sessionPoints,
   onPickSong,
   onJoinQueue,
 }: {
@@ -180,6 +181,7 @@ function DJStage({
   isCurrentDJ: boolean
   currentUserId: string | null
   joiningQueue: boolean
+  sessionPoints: number
   onPickSong: () => void
   onJoinQueue: () => void
 }) {
@@ -237,6 +239,16 @@ function DJStage({
               crossOrigin="anonymous"
             />
           </div>
+          {/* Session points badge */}
+          {sessionPoints > 0 && (
+            <div
+              className="relative z-10 flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(124,58,237,0.2)', border: '1px solid rgba(124,58,237,0.45)' }}
+            >
+              <Zap className="w-2.5 h-2.5 text-neon-purple" />
+              <span className="text-[8px] font-bold text-neon-purple">{sessionPoints}</span>
+            </div>
+          )}
           <span className="relative z-10 text-[9px] text-neon-cyan neon-text-cyan mb-2">{djName}</span>
           {/* Pick song CTA for the active DJ */}
           {isCurrentDJ && !hasVideo && (
@@ -920,6 +932,9 @@ export default function MusicRoom({
     setChatMessages((prev) => [...prev.slice(-99), msg])
   }, [currentUserProfile, currentUserId])
 
+  // Session points = awesome votes cast for the current DJ during this song
+  const sessionPoints = votes.filter(v => v.vote_type === 'awesome').length
+
   const djName = currentDJProfile
     ? currentDJProfile.display_name || currentDJProfile.username
     : ""
@@ -972,6 +987,7 @@ export default function MusicRoom({
             isCurrentDJ={isCurrentDJ}
             currentUserId={currentUserId}
             joiningQueue={joiningQueue}
+            sessionPoints={sessionPoints}
             onPickSong={onPickSong}
             onJoinQueue={handleJoinQueue}
           />

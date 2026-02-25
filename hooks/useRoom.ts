@@ -378,9 +378,10 @@ export function useRoom(roomId: string): UseRoomReturn {
         user_id: currentUserId,
         video_id: room.current_video_id,
         vote_type: type,
+        dj_id: room.current_dj_id ?? null,
       })
     }
-  }, [currentUserId, room?.current_video_id, roomId, supabase, votes])
+  }, [currentUserId, room?.current_video_id, room?.current_dj_id, roomId, supabase, votes])
 
   return {
     room,

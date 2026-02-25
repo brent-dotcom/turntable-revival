@@ -27,6 +27,7 @@ export interface Profile {
   avatar_bg_color: string
   avatar_accessory: AvatarAccessory
   avatar_hair: AvatarHair
+  dj_points: number
   created_at: string
   updated_at: string
 }
@@ -81,6 +82,7 @@ export interface Vote {
   user_id: string
   video_id: string
   vote_type: VoteType
+  dj_id: string | null
   created_at: string
 }
 
