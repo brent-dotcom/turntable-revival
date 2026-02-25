@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import type { TrackInfo } from '@/types'
 
@@ -9,17 +9,24 @@ export async function POST(
   request: Request,
   { params }: { params: { roomId: string } }
 ) {
-  const supabase = createClient()
-
-  // Prefer Authorization header (more reliable in production API routes where
-  // cookie propagation after middleware refresh can be inconsistent).
-  // Fall back to cookie-based auth handled by createClient().
+  // Require Authorization header — cookie-based auth is unreliable in
+  // production API routes after middleware token refresh.
   const authHeader = request.headers.get('authorization')
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
 
-  const { data: { user } } = token
-    ? await supabase.auth.getUser(token)
-    : await supabase.auth.getUser()
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Create a JWT-authenticated client so all DB operations run under the
+  // user's identity and RLS policies (auth.uid() IS NOT NULL) are satisfied.
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  )
+
+  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -130,20 +137,7 @@ export async function POST(
   }
 
   // No more songs for this DJ — rotate to the next occupied spot.
-  // Clear all video/track fields first so hasVideo resets to false for the
-  // incoming DJ. advance_dj_queue pre-dates these columns so it won't clear them.
-  await supabase
-    .from('rooms')
-    .update({
-      current_video_id: null,
-      current_video_title: null,
-      current_video_thumbnail: null,
-      video_started_at: null,
-      current_track_url: null,
-      current_track_source: null,
-    })
-    .eq('id', roomId)
-
+  // advance_dj_queue (SECURITY DEFINER) clears all video/track fields atomically.
   const { error: advanceError } = await supabase.rpc('advance_dj_queue', {
     p_room_id: roomId,
   })
