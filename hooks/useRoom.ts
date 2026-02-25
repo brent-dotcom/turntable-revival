@@ -351,7 +351,14 @@ export function useRoom(roomId: string): UseRoomReturn {
       const now = Date.now()
       if (now - lastAutoSkipRef.current < 10_000) return
       lastAutoSkipRef.current = now
-      fetch(`/api/rooms/${roomId}/skip`, { method: 'POST' }).catch(console.error)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        fetch(`/api/rooms/${roomId}/skip`, {
+          method: 'POST',
+          headers: session?.access_token
+            ? { 'Authorization': `Bearer ${session.access_token}` }
+            : {},
+        }).catch(console.error)
+      })
     }
   }, [voteCounts.lamePercent, voteCounts.total, room, roomId, currentUserId, members.length])
 
@@ -415,8 +422,14 @@ export function useRoom(roomId: string): UseRoomReturn {
   }, [roomId, currentUserId, supabase])
 
   const skipSong = useCallback(async () => {
-    await fetch(`/api/rooms/${roomId}/skip`, { method: 'POST' })
-  }, [roomId])
+    const { data: { session } } = await supabase.auth.getSession()
+    await fetch(`/api/rooms/${roomId}/skip`, {
+      method: 'POST',
+      headers: session?.access_token
+        ? { 'Authorization': `Bearer ${session.access_token}` }
+        : {},
+    })
+  }, [roomId, supabase])
 
   const castVote = useCallback(async (type: VoteType) => {
     if (!currentUserId || !room?.current_video_id) return

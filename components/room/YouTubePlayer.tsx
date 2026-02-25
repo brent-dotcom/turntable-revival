@@ -82,12 +82,13 @@ export default function YouTubePlayer({
         start: Math.floor(startSecondsRef.current),
         controls: 0,
         disablekb: 1,
+        enablejsapi: 1,
         fs: 0,
         modestbranding: 1,
         rel: 0,
         mute: muted ? 1 : 0,
         playsinline: 1,
-        origin: window.location.origin,
+        origin: process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin,
       },
       events: {
         onReady: (event) => {

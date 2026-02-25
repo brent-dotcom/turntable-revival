@@ -6,11 +6,20 @@ const SKIP_COOLDOWN_SECONDS = 15
 
 // POST /api/rooms/[roomId]/skip
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { roomId: string } }
 ) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+
+  // Prefer Authorization header (more reliable in production API routes where
+  // cookie propagation after middleware refresh can be inconsistent).
+  // Fall back to cookie-based auth handled by createClient().
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+
+  const { data: { user } } = token
+    ? await supabase.auth.getUser(token)
+    : await supabase.auth.getUser()
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
