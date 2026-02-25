@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { buildDiceBearUrl, seedToColor } from '@/components/avatar/Avatar'
+import { buildDiceBearUrl, seedToColor } from '@/lib/avatar'
 import { Users, Music, Disc3, Plus, Radio } from 'lucide-react'
 import type { RoomWithDJ } from '@/types'
 

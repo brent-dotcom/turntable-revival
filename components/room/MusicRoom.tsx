@@ -16,10 +16,10 @@ import {
   Zap,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { buildDiceBearUrl, seedToColor } from "@/components/avatar/Avatar"
+import { buildDiceBearUrl, seedToColor } from "@/lib/avatar"
 import YouTubePlayer from "@/components/room/YouTubePlayer"
 import AuthPromptModal from "@/components/ui/AuthPromptModal"
-import type { DJQueueEntry, Profile, Room, RoomMember, Vote, VoteCounts, VoteType } from "@/types"
+import type { DJQueueEntry, Profile, Room, RoomMember, SongHistoryEntry, Vote, VoteCounts, VoteType } from "@/types"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -488,6 +488,16 @@ function EmojiReactionBurst({ onDone }: { onDone: () => void }) {
   )
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function timeAgo(iso: string): string {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
+}
+
 // ─── Now Playing Bar ─────────────────────────────────────────────────────────
 
 function NowPlayingBar({
@@ -791,6 +801,7 @@ function RightSidebar({
   messages,
   currentUserName,
   disabled,
+  songHistory,
   onSendChat,
 }: {
   queue: (DJQueueEntry & { profile: Profile })[]
@@ -798,6 +809,7 @@ function RightSidebar({
   messages: ChatMessage[]
   currentUserName: string | null
   disabled: boolean
+  songHistory: SongHistoryEntry[]
   onSendChat: (text: string) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -848,6 +860,41 @@ function RightSidebar({
             </div>
           </div>
 
+          {/* Recent Tracks */}
+          {songHistory.length > 0 && (
+            <div className="p-3 border-b border-border">
+              <span className="text-[8px] text-neon-purple uppercase tracking-widest neon-text-purple">
+                Recent Tracks
+              </span>
+              <div className="flex flex-col gap-2 mt-2">
+                {songHistory.map((entry) => (
+                  <div key={entry.id} className="flex items-center gap-2">
+                    {entry.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={entry.thumbnail}
+                        alt=""
+                        width={28}
+                        height={28}
+                        className="rounded shrink-0 object-cover"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded shrink-0 bg-bg-secondary flex items-center justify-center">
+                        <Music className="w-3 h-3 text-text-muted" />
+                      </div>
+                    )}
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[9px] text-text-primary/80 truncate leading-tight">{entry.title}</span>
+                      <span className="text-[7px] text-text-muted">
+                        {entry.dj_username ? `@${entry.dj_username}` : ''}{entry.dj_username ? ' · ' : ''}{timeAgo(entry.played_at)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Energy meter */}
           <div className="flex items-center justify-center border-b border-border">
             <CrowdEnergyMeter awesome={voteCounts.awesome} lame={voteCounts.lame} />
@@ -895,6 +942,7 @@ export default function MusicRoom({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [bursts, setBursts] = useState<number[]>([])
+  const [songHistory, setSongHistory] = useState<SongHistoryEntry[]>([])
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   // Stable ref so join/leave callbacks always see the latest profile
   const currentUserProfileRef = useRef(currentUserProfile)
@@ -914,6 +962,33 @@ export default function MusicRoom({
     }
     onJoinQueue()
   }
+
+  // Song history: fetch last 5 + subscribe to new plays
+  useEffect(() => {
+    supabase
+      .from('song_history')
+      .select('*')
+      .eq('room_id', room.id)
+      .order('played_at', { ascending: false })
+      .limit(5)
+      .then(({ data }) => {
+        if (data) setSongHistory(data as SongHistoryEntry[])
+      })
+
+    const sub = supabase
+      .channel(`song_history:${room.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'song_history',
+        filter: `room_id=eq.${room.id}`,
+      }, (payload) => {
+        setSongHistory(prev => [payload.new as SongHistoryEntry, ...prev].slice(0, 5))
+      })
+      .subscribe()
+
+    return () => { sub.unsubscribe() }
+  }, [room.id, supabase])
 
   // Supabase Realtime Broadcast for ephemeral chat
   useEffect(() => {
@@ -1030,6 +1105,7 @@ export default function MusicRoom({
           messages={chatMessages}
           currentUserName={currentUserProfile ? (currentUserProfile.display_name || currentUserProfile.username) : null}
           disabled={!currentUserId}
+          songHistory={songHistory}
           onSendChat={handleSendChat}
         />
       </div>

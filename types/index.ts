@@ -52,6 +52,17 @@ export interface Room {
   updated_at: string
 }
 
+export interface SongHistoryEntry {
+  id: string
+  room_id: string
+  video_id: string
+  title: string
+  thumbnail: string | null
+  dj_id: string | null
+  dj_username: string | null
+  played_at: string
+}
+
 export interface RoomWithDJ extends Room {
   dj_profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_seed' | 'avatar_bg_color' | 'avatar_hair' | 'avatar_accessory'> | null
 }
