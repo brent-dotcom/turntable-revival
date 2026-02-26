@@ -85,18 +85,24 @@ function RoomCard({ room, isAdmin, onDelete }: { room: RoomWithDJ; isAdmin: bool
         animation: isPlaying ? 'lobbyCardPulse 3s ease-in-out infinite' : 'none',
       }}
     >
-      {/* Thumbnail strip */}
-      <div className="relative w-full aspect-video bg-bg-secondary overflow-hidden flex items-center justify-center">
-        {room.current_video_thumbnail ? (
+      {/* Room visual — never shows YouTube thumbnails */}
+      <div
+        className="relative w-full flex items-center justify-center py-7 overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.18) 0%, rgba(6,182,212,0.10) 100%)' }}
+      >
+        {room.dj_profile ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={room.current_video_thumbnail}
-            alt={room.current_video_title ?? 'Now playing'}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            src={djAvatarUrl(room.dj_profile)}
+            alt={djName ?? 'DJ avatar'}
+            width={64}
+            height={64}
+            className="rounded-xl pixel-image"
+            style={{ filter: isPlaying ? 'drop-shadow(0 0 8px rgba(6,182,212,0.6))' : undefined }}
           />
         ) : (
           <Disc3
-            size={40}
+            size={44}
             className="text-text-muted group-hover:text-accent-purple transition-colors"
             style={{ animation: isPlaying ? 'spin 3s linear infinite' : 'none' }}
           />
