@@ -14,7 +14,10 @@
       "Bash(ssh-keygen:*)",
       "Bash(head:*)",
       "Bash(git -C ~/turntable-revival remote set-url origin git@github.com:brent-dotcom/turntable-revival.git && GIT_SSH_COMMAND=\"ssh -i ~/.ssh/github_turntable\" git -C ~/turntable-revival push -u origin master 2>&1)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/github_turntable\" git:*)",
+      "Bash(curl:*)",
+      "Bash(npx vercel:*)"
     ]
   }
 }

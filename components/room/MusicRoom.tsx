@@ -9,6 +9,7 @@ import {
   Music,
   Users,
   Volume2,
+  VolumeX,
   ChevronRight,
   ChevronLeft,
   Star,
@@ -207,7 +208,7 @@ function DJStage({
     : "No DJ"
 
   return (
-    <section className="relative flex flex-col items-center bg-stage-bg" aria-label="DJ Stage">
+    <section className="relative flex flex-col items-center bg-stage-bg min-h-[360px] md:min-h-[420px]" aria-label="DJ Stage">
       {/* Background grid */}
       <div
         className="absolute inset-0 opacity-[0.03]"
@@ -379,8 +380,8 @@ const BOTS = [
 // ─── Checkerboard Dance Floor ────────────────────────────────────────────────
 
 function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[] }) {
-  const COLS = 14
-  const ROWS = 7
+  const COLS = 18
+  const ROWS = 9
 
   const sizeByRow = [48, 38, 30]
 
@@ -608,7 +609,11 @@ function NowPlayingBar({
   listenerCount,
   trackSource,
   showSettings,
+  volume,
+  muted,
   onOpenSettings,
+  onToggleMute,
+  onVolumeChange,
 }: {
   track: string
   artist: string
@@ -616,23 +621,29 @@ function NowPlayingBar({
   listenerCount: number
   trackSource: TrackSource | null
   showSettings: boolean
+  volume: number
+  muted: boolean
   onOpenSettings: () => void
+  onToggleMute: () => void
+  onVolumeChange: (v: number) => void
 }) {
+  const [showSlider, setShowSlider] = useState(false)
   const badge = trackSource ? getSourceBadge(trackSource) : null
+  const filledBars = muted ? 0 : Math.round((volume / 100) * 5)
 
   return (
     <header className="flex items-center justify-between px-3 md:px-6 py-3 bg-bg-card border-b border-border animate-breathe-glow" aria-label="Now Playing">
       <div className="flex items-center gap-2 md:gap-3 min-w-0">
         <div className="flex items-center gap-1.5">
           <Music className="w-4 h-4 text-neon-purple" />
-          <span className="hidden md:inline text-[10px] text-neon-purple uppercase tracking-wider animate-neon-flicker">
+          <span className="hidden md:inline text-xs font-semibold text-neon-purple uppercase tracking-wider animate-neon-flicker">
             {roomName}
           </span>
         </div>
         <div className="h-4 w-px bg-border hidden md:block" />
         <div className="flex items-center gap-1.5 text-text-muted">
           <Users className="w-3 h-3" />
-          <span className="text-[10px]">{listenerCount}</span>
+          <span className="text-xs">{listenerCount}</span>
         </div>
       </div>
 
@@ -650,17 +661,17 @@ function NowPlayingBar({
           <div className="flex items-center gap-1.5">
             {badge && (
               <span
-                className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold shrink-0"
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0"
                 style={{ background: 'rgba(124,58,237,0.2)', border: '1px solid rgba(124,58,237,0.4)', color: 'var(--neon-cyan)' }}
               >
                 {badge.emoji} {badge.label}
               </span>
             )}
-            <span className="text-[10px] md:text-xs text-neon-cyan neon-text-cyan truncate max-w-32 md:max-w-none">
+            <span className="text-sm font-semibold text-neon-cyan neon-text-cyan truncate max-w-40 md:max-w-none">
               {track}
             </span>
           </div>
-          <span className="text-[8px] md:text-[10px] text-text-muted truncate max-w-28 md:max-w-none">
+          <span className="text-xs text-text-secondary truncate max-w-36 md:max-w-none">
             {artist}
           </span>
         </div>
@@ -676,15 +687,54 @@ function NowPlayingBar({
       </div>
 
       <div className="flex items-center gap-2">
-        <Volume2 className="w-4 h-4 text-text-muted" />
-        <div className="hidden md:flex items-center gap-0.5">
-          {Array.from({ length: 5 }).map((_, i) => (
+        {/* Volume control */}
+        <div className="relative hidden md:flex items-center gap-2">
+          <button
+            onClick={onToggleMute}
+            className="p-1 rounded text-text-muted hover:text-neon-cyan transition-colors"
+            title={muted ? "Unmute" : "Mute"}
+          >
+            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+          <div
+            className="flex items-center gap-0.5 cursor-pointer"
+            onClick={() => setShowSlider((s) => !s)}
+            title={`Volume: ${muted ? 'muted' : volume + '%'}`}
+          >
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className={`w-1 rounded-full transition-colors ${i < filledBars ? "bg-neon-cyan" : "bg-border"}`}
+                style={{ height: `${6 + i * 3}px` }}
+              />
+            ))}
+          </div>
+          {showSlider && (
             <div
-              key={i}
-              className={`w-1 rounded-full ${i < 4 ? "bg-neon-cyan" : "bg-border"}`}
-              style={{ height: `${6 + i * 3}px` }}
-            />
-          ))}
+              className="absolute right-0 top-full mt-2 z-50 bg-bg-card border border-border rounded-lg p-3 shadow-xl"
+              style={{ width: 160 }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-text-muted">Volume</span>
+                <span className="text-xs font-mono text-neon-cyan">{muted ? 'muted' : `${volume}%`}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={muted ? 0 : volume}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  onVolumeChange(v)
+                }}
+                className="w-full accent-[#06b6d4] cursor-pointer"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-[10px] text-text-muted">0</span>
+                <span className="text-[10px] text-text-muted">100</span>
+              </div>
+            </div>
+          )}
         </div>
         {showSettings && (
           <button
@@ -771,10 +821,11 @@ function VoteControls({
         <button
           onClick={() => !disabled && onVote("awesome")}
           disabled={disabled || isCurrentDJ}
-          className={`group flex items-center gap-2 md:gap-3 px-5 md:px-8 py-2.5 md:py-3 rounded-full transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
+          className={`group flex items-center gap-3 md:gap-4 px-6 md:px-10 rounded-full transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
             userVote === "awesome" ? "neon-glow-purple" : "hover:opacity-90"
           }`}
           style={{
+            minHeight: 56,
             background: userVote === "awesome"
               ? "linear-gradient(135deg, #7c3aed, #5b21b6)"
               : "linear-gradient(135deg, #7c3aed60, #5b21b640)",
@@ -783,12 +834,12 @@ function VoteControls({
           aria-label={`Vote awesome, currently ${voteCounts.awesome} votes`}
           aria-pressed={userVote === "awesome"}
         >
-          <ThumbsUp className={`w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:scale-110 ${userVote === "awesome" ? "text-white fill-white/30" : "text-text-primary/70"}`} />
+          <ThumbsUp className={`w-6 h-6 transition-transform group-hover:scale-110 ${userVote === "awesome" ? "text-white fill-white/30" : "text-text-primary"}`} />
           <div className="flex flex-col items-start">
-            <span className={`text-[8px] md:text-[10px] uppercase tracking-wider ${userVote === "awesome" ? "text-white" : "text-text-primary/70"}`}>
+            <span className={`text-xs uppercase tracking-wider font-semibold ${userVote === "awesome" ? "text-white" : "text-text-primary"}`}>
               Awesome
             </span>
-            <span className={`text-xs md:text-sm font-mono ${userVote === "awesome" ? "text-white" : "text-text-primary"}`}>
+            <span className={`text-base font-mono font-bold ${userVote === "awesome" ? "text-white" : "text-text-primary"}`}>
               {voteCounts.awesome}
             </span>
           </div>
@@ -800,10 +851,10 @@ function VoteControls({
           {(isCurrentDJ || isAdminOrOwner) && (
             <button
               onClick={onSkip}
-              className="p-2 md:p-2.5 rounded-lg border border-border bg-bg-secondary text-text-muted hover:border-neon-purple/50 hover:text-neon-purple transition-all"
+              className="p-2.5 md:p-3 rounded-lg border border-border bg-bg-secondary text-text-muted hover:border-neon-purple/50 hover:text-neon-purple transition-all"
               aria-label="Skip track"
             >
-              <SkipForward className="w-4 h-4 md:w-5 md:h-5" />
+              <SkipForward className="w-5 h-5 md:w-6 md:h-6" />
             </button>
           )}
         </div>
@@ -813,8 +864,9 @@ function VoteControls({
         <button
           onClick={() => !disabled && onVote("lame")}
           disabled={disabled || isCurrentDJ}
-          className={`group flex items-center gap-2 md:gap-3 px-5 md:px-8 py-2.5 md:py-3 rounded-full transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90`}
+          className={`group flex items-center gap-3 md:gap-4 px-6 md:px-10 rounded-full transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90`}
           style={{
+            minHeight: 56,
             background: userVote === "lame"
               ? "linear-gradient(135deg, #ef4444, #b91c1c)"
               : "linear-gradient(135deg, #ef444460, #b91c1c40)",
@@ -825,14 +877,14 @@ function VoteControls({
           aria-pressed={userVote === "lame"}
         >
           <div className="flex flex-col items-end">
-            <span className={`text-[8px] md:text-[10px] uppercase tracking-wider ${userVote === "lame" ? "text-white" : "text-text-primary/70"}`}>
+            <span className={`text-xs uppercase tracking-wider font-semibold ${userVote === "lame" ? "text-white" : "text-text-primary"}`}>
               Lame
             </span>
-            <span className={`text-xs md:text-sm font-mono ${userVote === "lame" ? "text-white" : "text-text-primary"}`}>
+            <span className={`text-base font-mono font-bold ${userVote === "lame" ? "text-white" : "text-text-primary"}`}>
               {voteCounts.lame}
             </span>
           </div>
-          <ThumbsDown className={`w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:scale-110 ${userVote === "lame" ? "text-white fill-white/30" : "text-text-primary/70"}`} />
+          <ThumbsDown className={`w-6 h-6 transition-transform group-hover:scale-110 ${userVote === "lame" ? "text-white fill-white/30" : "text-text-primary"}`} />
         </button>
         </div>
       </div>
@@ -870,37 +922,37 @@ function ChatPanel({
 
   return (
     <aside className="flex flex-col w-full bg-bg-card border-l border-border" aria-label="Chat">
-      <div className="px-3 py-2 border-b border-border">
-        <span className="text-[8px] md:text-[10px] text-neon-purple uppercase tracking-widest neon-text-purple">
+      <div className="px-3 py-2.5 border-b border-border">
+        <span className="text-xs font-semibold text-neon-purple uppercase tracking-widest neon-text-purple">
           Room Chat
         </span>
       </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 max-h-[200px] md:max-h-none">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-3 max-h-[200px] md:max-h-none">
         {messages.map((msg) =>
           msg.system ? (
             <div key={msg.id} className="flex items-center gap-1.5 py-0.5">
               <div className="flex-1 h-px bg-border/50" />
-              <span className="text-[8px] text-text-muted/60 italic shrink-0">{msg.text}</span>
+              <span className="text-xs text-text-muted italic shrink-0">{msg.text}</span>
               <div className="flex-1 h-px bg-border/50" />
             </div>
           ) : (
             <div key={msg.id} className="flex gap-2 items-start">
-              <span className="text-[9px] md:text-[10px] shrink-0" style={{ color: msg.color }}>
+              <span className="text-xs font-bold shrink-0" style={{ color: msg.color }}>
                 {msg.user}:
               </span>
-              <span className="text-[9px] md:text-[10px] text-text-primary/80 leading-relaxed break-words">
+              <span className="text-sm text-text-primary leading-[1.6] break-words">
                 {msg.text}
               </span>
             </div>
           )
         )}
         {messages.length === 0 && (
-          <p className="text-[9px] text-text-muted text-center py-2">No messages yet</p>
+          <p className="text-sm text-text-secondary text-center py-4">No messages yet</p>
         )}
       </div>
       <form
         onSubmit={(e) => { e.preventDefault(); handleSend() }}
-        className="flex items-center gap-2 p-2 border-t border-border"
+        className="flex items-center gap-2 p-2.5 border-t border-border"
       >
         <input
           type="text"
@@ -908,15 +960,16 @@ function ChatPanel({
           onChange={(e) => setInput(e.target.value)}
           placeholder={disabled ? "Sign in to chat" : "Say something..."}
           disabled={disabled}
-          className="flex-1 bg-bg-secondary text-text-primary text-[9px] md:text-[10px] px-3 py-2 rounded-md border border-border focus:border-neon-cyan focus:outline-none placeholder:text-text-muted disabled:opacity-50"
+          className="flex-1 bg-bg-secondary text-text-primary text-sm px-3 rounded-md border border-border focus:border-neon-cyan focus:outline-none placeholder:text-text-muted disabled:opacity-50"
+          style={{ minHeight: 40 }}
         />
         <button
           type="submit"
           disabled={disabled}
-          className="p-2 text-neon-cyan hover:bg-neon-cyan/10 rounded-md transition-colors disabled:opacity-50"
+          className="p-2.5 text-neon-cyan hover:bg-neon-cyan/10 rounded-md transition-colors disabled:opacity-50"
           aria-label="Send message"
         >
-          <Send className="w-3.5 h-3.5" />
+          <Send className="w-4 h-4" />
         </button>
       </form>
     </aside>
@@ -951,7 +1004,7 @@ function RightSidebar({
   const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <div className={`hidden md:flex flex-col border-l border-border bg-bg-card transition-all duration-300 ${collapsed ? "w-12" : "w-72"}`}>
+    <div className={`hidden md:flex flex-col border-l border-border bg-bg-card transition-all duration-300 ${collapsed ? "w-12" : "w-80"}`}>
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="flex items-center justify-center py-2 border-b border-border text-text-muted hover:text-neon-cyan transition-colors"
@@ -967,11 +1020,11 @@ function RightSidebar({
       ) : (
         <>
           {/* DJ Queue — 3 fixed spots */}
-          <div className="p-3 border-b border-border">
-            <span className="text-[8px] text-neon-cyan uppercase tracking-widest neon-text-cyan">
+          <div className="p-4 border-b border-border">
+            <span className="text-[11px] font-semibold text-neon-cyan uppercase tracking-widest neon-text-cyan">
               DJ Spots
             </span>
-            <div className="flex flex-col gap-2 mt-2">
+            <div className="flex flex-col gap-2 mt-3">
               {[1, 2, 3].map((spot) => {
                 const entry = queue.find((q) => q.spot === spot)
                 const isActive = spot === activeDJSpot
@@ -979,9 +1032,9 @@ function RightSidebar({
                 return (
                   <div
                     key={spot}
-                    className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors ${isActive ? 'bg-neon-cyan/10 border border-neon-cyan/20' : 'border border-transparent'}`}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${isActive ? 'bg-neon-cyan/10 border border-neon-cyan/30' : 'border border-border/40 bg-bg-secondary/30'}`}
                   >
-                    <span className={`text-[8px] font-mono shrink-0 ${isActive ? 'text-neon-cyan' : 'text-text-muted'}`}>
+                    <span className={`text-xs font-mono shrink-0 w-4 text-center ${isActive ? 'text-neon-cyan' : 'text-text-muted'}`}>
                       {isActive ? '▶' : spot}
                     </span>
                     {p ? (
@@ -990,18 +1043,18 @@ function RightSidebar({
                         <img
                           src={avatarUrl(p)}
                           alt={p.display_name || p.username}
-                          width={22}
-                          height={22}
+                          width={32}
+                          height={32}
                           className="rounded shrink-0"
                           crossOrigin="anonymous"
                         />
                         <div className="flex flex-col min-w-0 flex-1">
-                          <span className={`text-[9px] truncate ${isActive ? 'text-neon-cyan' : 'text-text-primary/80'}`}>
+                          <span className={`text-sm font-semibold truncate ${isActive ? 'text-neon-cyan' : 'text-text-primary'}`}>
                             {p.display_name || p.username}
                             {p.is_admin && <span className="ml-1 text-neon-purple" title="Admin">⚡</span>}
                           </span>
                           {entry && entry.songs.length > 0 && (
-                            <span className="text-[7px] text-text-muted">{entry.songs.length} song{entry.songs.length !== 1 ? 's' : ''} queued</span>
+                            <span className="text-[10px] text-text-muted">{entry.songs.length} song{entry.songs.length !== 1 ? 's' : ''} queued</span>
                           )}
                         </div>
                         {isAdminOrOwner && (
@@ -1010,12 +1063,12 @@ function RightSidebar({
                             className="text-text-muted hover:text-accent-red transition-colors shrink-0"
                             title="Remove DJ from spot"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </>
                     ) : (
-                      <span className="text-[8px] text-text-muted/50 italic">Empty</span>
+                      <span className="text-xs text-text-muted italic">Empty</span>
                     )}
                   </div>
                 )
@@ -1025,21 +1078,21 @@ function RightSidebar({
 
           {/* Recent Tracks */}
           {songHistory.length > 0 && (
-            <div className="p-3 border-b border-border">
-              <span className="text-[8px] text-neon-purple uppercase tracking-widest neon-text-purple">
+            <div className="p-4 border-b border-border">
+              <span className="text-[11px] font-semibold text-neon-purple uppercase tracking-widest neon-text-purple">
                 Recent Tracks
               </span>
-              <div className="flex flex-col gap-2 mt-2">
+              <div className="flex flex-col gap-2.5 mt-3">
                 {songHistory.map((entry) => {
                   const srcBadge = entry.track_source ? getSourceBadge(entry.track_source as TrackSource) : null
                   return (
-                    <div key={entry.id} className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded shrink-0 bg-bg-secondary flex items-center justify-center text-base">
-                        {srcBadge ? srcBadge.emoji : <Music className="w-3 h-3 text-text-muted" />}
+                    <div key={entry.id} className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded shrink-0 bg-bg-secondary flex items-center justify-center text-base">
+                        {srcBadge ? srcBadge.emoji : <Music className="w-3.5 h-3.5 text-text-muted" />}
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-[9px] text-text-primary/80 truncate leading-tight">{entry.track_title || 'Unknown'}</span>
-                        <span className="text-[7px] text-text-muted">{timeAgo(entry.played_at)}</span>
+                        <span className="text-xs text-text-primary truncate leading-tight">{entry.track_title || 'Unknown'}</span>
+                        <span className="text-[10px] text-text-muted">{timeAgo(entry.played_at)}</span>
                       </div>
                     </div>
                   )
@@ -1049,9 +1102,9 @@ function RightSidebar({
           )}
 
           {/* Energy meter */}
-          <div className="flex items-center justify-center border-b border-border">
+          <div className="flex items-center justify-center gap-2 border-b border-border py-1">
             <CrowdEnergyMeter awesome={voteCounts.awesome} lame={voteCounts.lame} />
-            <span className="text-[7px] text-text-muted uppercase tracking-wider">Energy</span>
+            <span className="text-[10px] text-text-muted uppercase tracking-wider">Energy</span>
           </div>
 
           {/* Chat */}
@@ -1103,6 +1156,9 @@ export default function MusicRoom({
   const [showSettings, setShowSettings] = useState(false)
   const [bursts, setBursts] = useState<number[]>([])
   const [songHistory, setSongHistory] = useState<SongHistoryEntry[]>([])
+  const [volume, setVolume] = useState(80)
+  const [muted, setMuted] = useState(false)
+  const ytPlayerRef = useRef<YT.Player | null>(null)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   // Stable ref so join/leave callbacks always see the latest profile
   const currentUserProfileRef = useRef(currentUserProfile)
@@ -1117,6 +1173,29 @@ export default function MusicRoom({
       setBursts(prev => [...prev, Date.now()])
     }
     onVote(type)
+  }
+
+  function handleToggleMute() {
+    if (muted) {
+      ytPlayerRef.current?.unMute()
+      ytPlayerRef.current?.setVolume(volume || 80)
+      setMuted(false)
+    } else {
+      ytPlayerRef.current?.mute()
+      setMuted(true)
+    }
+  }
+
+  function handleVolumeChange(v: number) {
+    setVolume(v)
+    if (v === 0) {
+      ytPlayerRef.current?.mute()
+      setMuted(true)
+    } else {
+      ytPlayerRef.current?.unMute()
+      ytPlayerRef.current?.setVolume(v)
+      setMuted(false)
+    }
   }
 
   function handleJoinQueue() {
@@ -1235,6 +1314,7 @@ export default function MusicRoom({
           trackUrl={room.current_track_url ?? room.current_video_id ?? ''}
           playbackElapsed={playbackElapsed}
           onEnded={onEnded}
+          onPlayerReady={(player) => { ytPlayerRef.current = player }}
         />
       )}
 
@@ -1256,7 +1336,11 @@ export default function MusicRoom({
         listenerCount={members.length}
         trackSource={(room.current_track_source as TrackSource) ?? null}
         showSettings={isAdminOrOwner}
+        volume={volume}
+        muted={muted}
         onOpenSettings={() => setShowSettings(true)}
+        onToggleMute={handleToggleMute}
+        onVolumeChange={handleVolumeChange}
       />
 
       {/* Main content */}

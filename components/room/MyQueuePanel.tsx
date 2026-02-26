@@ -100,7 +100,7 @@ export default function MyQueuePanel({ songs, isPlaying, onUpdate }: MyQueuePane
                 onDragEnter={() => onDragEnter(idx)}
                 onDragEnd={onDragEnd}
                 onDragOver={(e) => e.preventDefault()}
-                className={`flex items-center gap-2 p-2 rounded-lg border transition-colors cursor-grab active:cursor-grabbing ${
+                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-grab active:cursor-grabbing ${
                   isActive
                     ? 'bg-accent-purple/15 border-accent-purple/40'
                     : 'bg-bg-secondary border-border hover:border-border-bright'
@@ -108,7 +108,7 @@ export default function MyQueuePanel({ songs, isPlaying, onUpdate }: MyQueuePane
               >
                 <GripVertical size={14} className="text-text-muted flex-shrink-0" />
                 <span className="text-sm flex-shrink-0">{badge.emoji}</span>
-                <span className="text-xs text-text-primary truncate flex-1 min-w-0">
+                <span className="text-sm text-text-primary truncate flex-1 min-w-0">
                   {track.title}
                 </span>
                 {isActive && (

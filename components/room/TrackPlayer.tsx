@@ -13,6 +13,7 @@ interface TrackPlayerProps {
   trackUrl: string
   playbackElapsed: number
   onEnded: () => void
+  onPlayerReady?: (player: YT.Player) => void
 }
 
 /** Hidden 1px player — keeps audio alive for all three source types */
@@ -22,6 +23,7 @@ export default function TrackPlayer({
   trackUrl,
   playbackElapsed,
   onEnded,
+  onPlayerReady,
 }: TrackPlayerProps) {
   const hiddenStyle: React.CSSProperties = {
     position: 'absolute',
@@ -40,6 +42,7 @@ export default function TrackPlayer({
           videoId={videoId}
           startSeconds={playbackElapsed}
           onEnded={onEnded}
+          onPlayerReady={onPlayerReady}
           muted={false}
         />
       </div>

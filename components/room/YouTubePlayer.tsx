@@ -7,6 +7,7 @@ interface YouTubePlayerProps {
   startSeconds: number
   onEnded?: () => void
   onReady?: () => void
+  onPlayerReady?: (player: YT.Player) => void
   muted?: boolean
 }
 
@@ -47,17 +48,20 @@ export default function YouTubePlayer({
   startSeconds,
   onEnded,
   onReady,
+  onPlayerReady,
   muted = false,
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<YT.Player | null>(null)
   const onEndedRef = useRef(onEnded)
   const onReadyRef = useRef(onReady)
+  const onPlayerReadyRef = useRef(onPlayerReady)
   // Capture startSeconds only once — changing it must not recreate the player
   const startSecondsRef = useRef(startSeconds)
 
   useEffect(() => { onEndedRef.current = onEnded }, [onEnded])
   useEffect(() => { onReadyRef.current = onReady }, [onReady])
+  useEffect(() => { onPlayerReadyRef.current = onPlayerReady }, [onPlayerReady])
 
   const createPlayer = useCallback(async () => {
     await loadYouTubeAPI()
@@ -96,9 +100,12 @@ export default function YouTubePlayer({
           event.target.setVolume(80)
           event.target.playVideo()
           onReadyRef.current?.()
+          onPlayerReadyRef.current?.(event.target)
         },
         onStateChange: (event) => {
+          console.log('[YT] stateChange:', event.data)
           if (event.data === window.YT.PlayerState.ENDED) {
+            console.log('[YT] ENDED — calling onEnded')
             onEndedRef.current?.()
           }
         },

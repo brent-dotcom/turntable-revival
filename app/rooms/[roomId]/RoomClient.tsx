@@ -67,10 +67,15 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
   }
 
   async function handleSongEnded() {
+    // Only the active DJ's client advances the queue — prevents race conditions
+    // where a spectator's request wins the cooldown claim and the dj_queue UPDATE
+    // silently fails RLS (auth.uid() ≠ DJ's user_id).
+    if (!isCurrentDJ) return
     if (skippingRef.current) return
     skippingRef.current = true
+    console.log('[AutoAdvance] Song ended — DJ client triggering skip')
     await skipSong()
-    setTimeout(() => { skippingRef.current = false }, 10_000)
+    setTimeout(() => { skippingRef.current = false }, 3_000)
   }
 
   async function handleDeleteRoom() {
