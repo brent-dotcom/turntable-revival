@@ -803,6 +803,14 @@ function VoteControls({
   onVote: (type: VoteType) => void
   onSkip: () => void
 }) {
+  const [skipped, setSkipped] = useState(false)
+
+  function handleSkip() {
+    onSkip()
+    setSkipped(true)
+    setTimeout(() => setSkipped(false), 1500)
+  }
+
   // Rough track progress — 240s assumed max per song
   const trackProgress = Math.min((playbackElapsed / 240) * 100, 100)
   const userVote = voteCounts.userVote
@@ -848,13 +856,38 @@ function VoteControls({
 
         {/* Center controls */}
         <div className="flex items-center gap-2 md:gap-3">
-          {(isCurrentDJ || isAdminOrOwner) && (
+          {isCurrentDJ && (
+            <button
+              onClick={handleSkip}
+              className="flex items-center gap-2 px-5 py-3 rounded-full font-semibold text-sm transition-all duration-200 select-none"
+              style={skipped ? {
+                background: 'rgba(16,185,129,0.15)',
+                border: '2px solid #10b981',
+                color: '#10b981',
+                boxShadow: '0 0 14px rgba(16,185,129,0.35)',
+              } : {
+                background: 'rgba(124,58,237,0.18)',
+                border: '2px solid #7c3aed',
+                color: '#f1f0ff',
+                boxShadow: '0 0 10px rgba(124,58,237,0.25)',
+              }}
+              aria-label="Skip to next song"
+            >
+              {skipped ? (
+                <>✓ Skipped</>
+              ) : (
+                <>Skip <SkipForward className="w-4 h-4" /></>
+              )}
+            </button>
+          )}
+          {/* Admin/owner skip — small icon, only when not already the DJ */}
+          {isAdminOrOwner && !isCurrentDJ && (
             <button
               onClick={onSkip}
-              className="p-2.5 md:p-3 rounded-lg border border-border bg-bg-secondary text-text-muted hover:border-neon-purple/50 hover:text-neon-purple transition-all"
-              aria-label="Skip track"
+              className="p-2.5 rounded-lg border border-border bg-bg-secondary text-text-muted hover:border-neon-purple/50 hover:text-neon-purple transition-all"
+              aria-label="Skip track (admin)"
             >
-              <SkipForward className="w-5 h-5 md:w-6 md:h-6" />
+              <SkipForward className="w-5 h-5" />
             </button>
           )}
         </div>
