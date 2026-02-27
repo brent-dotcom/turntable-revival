@@ -154,7 +154,7 @@ export async function POST(
             current_video_id: nextTrack.videoId ?? null,
             current_video_title: nextTrack.title,
             current_video_thumbnail: nextTrack.thumbnail ?? null,
-            current_track_source: nextTrack.source,
+            current_track_source: nextTrack.source ?? 'youtube',
             current_track_url: nextTrack.trackUrl,
             video_started_at: new Date().toISOString(),
           })
