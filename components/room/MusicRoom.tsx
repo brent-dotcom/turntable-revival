@@ -77,6 +77,50 @@ function avatarUrl(profile: Profile | null | undefined): string {
   )
 }
 
+// ─── Avatar image with initial-circle fallback ──────────────────────────────
+// Drops crossOrigin (avoids CDN CORS blocks) and shows a colored initial on error.
+function AvatarImg({
+  profile,
+  size,
+  className,
+  style,
+}: {
+  profile: Profile | null | undefined
+  size: number
+  className?: string
+  style?: React.CSSProperties
+}) {
+  const [error, setError] = useState(false)
+  const name = profile?.display_name || profile?.username || '?'
+  const initial = name[0].toUpperCase()
+  const color = profile?.username ? seedToColor(profile.username) : 'b6e3f4'
+
+  if (error || !profile?.username) {
+    return (
+      <div
+        className={`rounded flex items-center justify-center font-bold select-none shrink-0 ${className ?? ''}`}
+        style={{ width: size, height: size, background: `#${color}`, fontSize: Math.round(size * 0.45), color: '#1a1a2e', ...style }}
+        title={name}
+      >
+        {initial}
+      </div>
+    )
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={avatarUrl(profile)}
+      alt={name}
+      width={size}
+      height={size}
+      className={`rounded shrink-0 ${className ?? ''}`}
+      style={style}
+      onError={() => setError(true)}
+    />
+  )
+}
+
 function userColor(userId: string): string {
   let h = 0
   for (let i = 0; i < userId.length; i++) h = (h * 31 + userId.charCodeAt(i)) >>> 0
@@ -246,15 +290,11 @@ function DJStage({
       {djProfile ? (
         <>
           <div className="relative z-10 animate-bounce-avatar-alt mb-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={avatarUrl(djProfile)}
-              alt="DJ avatar"
-              width={72}
-              height={72}
+            <AvatarImg
+              profile={djProfile}
+              size={72}
               className="rounded-lg"
               style={{ filter: "drop-shadow(0 0 10px var(--neon-cyan))" }}
-              crossOrigin="anonymous"
             />
           </div>
           {/* Session points badge */}
@@ -350,18 +390,10 @@ function DJStage({
                   {p ? (
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={buildDiceBearUrl(
-                          p.avatar_seed || p.username,
-                          p.avatar_seed ? p.avatar_bg_color : seedToColor(p.username),
-                          p.avatar_accessory || 'none',
-                          p.avatar_hair || 'short01'
-                        )}
-                        alt={p.display_name || p.username}
-                        width={isActive ? 36 : 26}
-                        height={isActive ? 36 : 26}
-                        className={`rounded transition-all ${isActive ? 'ring-2 ring-neon-cyan' : 'opacity-70'} ${isMySpot && !isActive ? 'ring-1 ring-neon-purple/60' : ''}`}
-                        crossOrigin="anonymous"
+                      <AvatarImg
+                        profile={p}
+                        size={isActive ? 36 : 26}
+                        className={`transition-all ${isActive ? 'ring-2 ring-neon-cyan' : 'opacity-70'} ${isMySpot && !isActive ? 'ring-1 ring-neon-purple/60' : ''}`}
                       />
                       <span className={`text-[7px] truncate max-w-[48px] text-center ${isActive ? 'text-neon-cyan' : isMySpot ? 'text-neon-purple/80' : 'text-text-muted'}`}>
                         {isMySpot ? 'You' : (p.display_name || p.username)}
@@ -453,6 +485,7 @@ function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[
   const listeners = realUsers.map((m, i) => ({
     name: m.profile.display_name || m.profile.username,
     url: avatarUrl(m.profile),
+    profile: m.profile,
     row: i < 4 ? 0 : 1, // front row up to 4, then middle
     isBot: false,
     opacity: i < 4 ? 1 : 0.85,
@@ -466,6 +499,7 @@ function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[
   const botAvatars = showBots ? BOTS.map((bot, i) => ({
     name: bot.name,
     url: buildDiceBearUrl(bot.seed, bot.bgColor, 'none', 'short01'),
+    profile: null as Profile | null,
     row: i < 5 ? 1 : 2, // first 5 in middle row, last 5 in back row
     isBot: true,
     opacity: botOpacity,
@@ -555,15 +589,12 @@ function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[
                 zIndex: (rowIdx + 1) * 10,
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={avatar.url}
-                alt={`${avatar.name}'s avatar`}
-                width={size}
-                height={size}
-                className="rounded"
-                crossOrigin="anonymous"
-              />
+              {avatar.profile ? (
+                <AvatarImg profile={avatar.profile} size={size} />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatar.url} alt={avatar.name} width={size} height={size} className="rounded" />
+              )}
               <span className={`text-[7px] truncate max-w-14 text-center ${avatar.isBot ? 'text-text-muted/50' : 'text-text-primary/70'}`}>
                 {avatar.name}
               </span>
@@ -1152,15 +1183,7 @@ function RightSidebar({
                     </span>
                     {p ? (
                       <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={avatarUrl(p)}
-                          alt={p.display_name || p.username}
-                          width={32}
-                          height={32}
-                          className="rounded shrink-0"
-                          crossOrigin="anonymous"
-                        />
+                        <AvatarImg profile={p} size={32} />
                         <div className="flex flex-col min-w-0 flex-1">
                           <span className={`text-sm font-semibold truncate ${isActive ? 'text-neon-cyan' : isMySpot ? 'text-neon-purple' : 'text-text-primary'}`}>
                             {p.display_name || p.username}
