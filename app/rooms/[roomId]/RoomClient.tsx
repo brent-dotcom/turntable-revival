@@ -60,6 +60,13 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
     }
   }, [isCurrentDJ, hasVideo])
 
+  // Close song picker if something started playing automatically (e.g. auto-advance)
+  useEffect(() => {
+    if (hasVideo) {
+      setShowSongPicker(false)
+    }
+  }, [hasVideo])
+
   async function handleJoinQueue() {
     setJoiningQueue(true)
     await joinQueue()
