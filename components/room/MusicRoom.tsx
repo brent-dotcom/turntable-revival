@@ -53,7 +53,7 @@ interface MusicRoomProps {
   onJoinQueue: () => void
   onLeaveQueue: () => void
   onPickSong: () => void
-  onSkip: () => void
+  onSkip: () => Promise<{ ok: boolean; error?: string }>
   onEnded: () => void
   onVote: (type: VoteType) => void
   // New: queue management + room admin
@@ -313,51 +313,88 @@ function DJStage({
       />
 
       {/* 3-Spot Podium Row */}
-      <div className="relative z-10 flex items-end justify-center gap-6 px-4 pb-2 pt-1 w-full max-w-md">
-        {[1, 2, 3].map((spot) => {
-          const entry = queue.find((q) => q.spot === spot)
-          const isActive = spot === activeDJSpot
-          const p = entry?.profile
-          return (
-            <div key={spot} className="flex flex-col items-center gap-1 relative">
-              {isActive && (
-                <Crown className="w-3 h-3 text-neon-cyan absolute -top-4" />
-              )}
-              {p ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={buildDiceBearUrl(
-                      p.avatar_seed || p.username,
-                      p.avatar_seed ? p.avatar_bg_color : seedToColor(p.username),
-                      p.avatar_accessory || 'none',
-                      p.avatar_hair || 'short01'
-                    )}
-                    alt={p.display_name || p.username}
-                    width={isActive ? 36 : 26}
-                    height={isActive ? 36 : 26}
-                    className={`rounded transition-all ${isActive ? 'ring-2 ring-neon-cyan' : 'opacity-70'}`}
-                    crossOrigin="anonymous"
-                  />
-                  <span className={`text-[7px] truncate max-w-[48px] text-center ${isActive ? 'text-neon-cyan' : 'text-text-muted'}`}>
-                    {p.display_name || p.username}
-                  </span>
-                </>
-              ) : (
-                <div className="flex flex-col items-center gap-0.5">
-                  <div
-                    className="rounded border border-dashed flex items-center justify-center"
-                    style={{ width: 26, height: 26, borderColor: 'rgba(124,58,237,0.3)', background: 'rgba(124,58,237,0.04)' }}
-                  >
-                    <span className="text-[10px] text-text-muted/40">?</span>
-                  </div>
-                  <span className="text-[7px] text-text-muted/40">Spot {spot}</span>
+      {(() => {
+        const isUserInQueue = currentUserId
+          ? queue.some((q) => q.user_id === currentUserId)
+          : false
+
+        return (
+          <div className="relative z-10 flex items-end justify-center gap-6 px-4 pb-2 pt-1 w-full max-w-md">
+            {[1, 2, 3].map((spot) => {
+              const entry = queue.find((q) => q.spot === spot)
+              const isActive = spot === activeDJSpot
+              const p = entry?.profile
+              const isMySpot = entry?.user_id === currentUserId
+              // Empty slot the current logged-in user can claim
+              const canClaim = !p && !!currentUserId && !isUserInQueue && !joiningQueue
+
+              return (
+                <div
+                  key={spot}
+                  className={`flex flex-col items-center gap-1 relative ${canClaim ? 'cursor-pointer group/podium' : ''}`}
+                  onClick={canClaim ? onJoinQueue : undefined}
+                  title={canClaim ? 'Click to DJ' : undefined}
+                >
+                  {/* Active crown */}
+                  {isActive && (
+                    <Crown className="w-3 h-3 text-neon-cyan absolute -top-4" />
+                  )}
+                  {/* "Your spot" dot for waiting DJs */}
+                  {isMySpot && !isActive && (
+                    <div
+                      className="absolute -top-3 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full"
+                      style={{ background: 'var(--neon-purple)', boxShadow: '0 0 4px var(--neon-purple)' }}
+                    />
+                  )}
+
+                  {p ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={buildDiceBearUrl(
+                          p.avatar_seed || p.username,
+                          p.avatar_seed ? p.avatar_bg_color : seedToColor(p.username),
+                          p.avatar_accessory || 'none',
+                          p.avatar_hair || 'short01'
+                        )}
+                        alt={p.display_name || p.username}
+                        width={isActive ? 36 : 26}
+                        height={isActive ? 36 : 26}
+                        className={`rounded transition-all ${isActive ? 'ring-2 ring-neon-cyan' : 'opacity-70'} ${isMySpot && !isActive ? 'ring-1 ring-neon-purple/60' : ''}`}
+                        crossOrigin="anonymous"
+                      />
+                      <span className={`text-[7px] truncate max-w-[48px] text-center ${isActive ? 'text-neon-cyan' : isMySpot ? 'text-neon-purple/80' : 'text-text-muted'}`}>
+                        {isMySpot ? 'You' : (p.display_name || p.username)}
+                      </span>
+                    </>
+                  ) : (
+                    /* Empty slot — clickable if user can claim */
+                    <div className="flex flex-col items-center gap-0.5">
+                      <div
+                        className={`rounded border border-dashed flex items-center justify-center transition-all duration-200 ${
+                          canClaim
+                            ? 'border-neon-cyan/50 bg-neon-cyan/5 group-hover/podium:border-neon-cyan group-hover/podium:bg-neon-cyan/15 group-hover/podium:shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                            : 'border-neon-purple/30 bg-neon-purple/4'
+                        }`}
+                        style={{ width: 26, height: 26 }}
+                      >
+                        {canClaim ? (
+                          <span className="text-sm leading-none text-neon-cyan/60 group-hover/podium:text-neon-cyan select-none">+</span>
+                        ) : (
+                          <span className="text-[10px] text-text-muted/40">?</span>
+                        )}
+                      </div>
+                      <span className={`text-[7px] transition-colors ${canClaim ? 'text-neon-cyan/60 group-hover/podium:text-neon-cyan' : 'text-text-muted/40'}`}>
+                        {canClaim ? 'Open' : `Spot ${spot}`}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
+              )
+            })}
+          </div>
+        )
+      })()}
     </section>
   )
 }
@@ -801,14 +838,27 @@ function VoteControls({
   isCurrentDJ: boolean
   isAdminOrOwner: boolean
   onVote: (type: VoteType) => void
-  onSkip: () => void
+  onSkip: () => Promise<{ ok: boolean; error?: string }>
 }) {
   const [skipped, setSkipped] = useState(false)
+  const [skipError, setSkipError] = useState<string | null>(null)
+  const [skipping, setSkipping] = useState(false)
 
-  function handleSkip() {
-    onSkip()
-    setSkipped(true)
-    setTimeout(() => setSkipped(false), 1500)
+  async function handleSkip() {
+    if (skipping) return
+    setSkipping(true)
+    setSkipError(null)
+    console.log('[handleSkip] calling onSkip...')
+    const result = await onSkip()
+    setSkipping(false)
+    console.log('[handleSkip] result:', result)
+    if (result.ok) {
+      setSkipped(true)
+      setTimeout(() => setSkipped(false), 1500)
+    } else {
+      setSkipError(result.error ?? 'Skip failed')
+      setTimeout(() => setSkipError(null), 3000)
+    }
   }
 
   // Rough track progress — 240s assumed max per song
@@ -857,33 +907,45 @@ function VoteControls({
         {/* Center controls */}
         <div className="flex items-center gap-2 md:gap-3">
           {isCurrentDJ && (
-            <button
-              onClick={handleSkip}
-              className="flex items-center gap-2 px-5 py-3 rounded-full font-semibold text-sm transition-all duration-200 select-none"
-              style={skipped ? {
-                background: 'rgba(16,185,129,0.15)',
-                border: '2px solid #10b981',
-                color: '#10b981',
-                boxShadow: '0 0 14px rgba(16,185,129,0.35)',
-              } : {
-                background: 'rgba(124,58,237,0.18)',
-                border: '2px solid #7c3aed',
-                color: '#f1f0ff',
-                boxShadow: '0 0 10px rgba(124,58,237,0.25)',
-              }}
-              aria-label="Skip to next song"
-            >
-              {skipped ? (
-                <>✓ Skipped</>
-              ) : (
-                <>Skip <SkipForward className="w-4 h-4" /></>
-              )}
-            </button>
+            <div className="flex flex-col items-center gap-1">
+              <button
+                onClick={handleSkip}
+                disabled={skipping}
+                className="flex items-center gap-2 px-5 py-3 rounded-full font-semibold text-sm transition-all duration-200 select-none disabled:opacity-60"
+                style={skipped ? {
+                  background: 'rgba(16,185,129,0.15)',
+                  border: '2px solid #10b981',
+                  color: '#10b981',
+                  boxShadow: '0 0 14px rgba(16,185,129,0.35)',
+                } : skipError ? {
+                  background: 'rgba(239,68,68,0.15)',
+                  border: '2px solid #ef4444',
+                  color: '#ef4444',
+                  boxShadow: '0 0 10px rgba(239,68,68,0.25)',
+                } : {
+                  background: 'rgba(124,58,237,0.18)',
+                  border: '2px solid #7c3aed',
+                  color: '#f1f0ff',
+                  boxShadow: '0 0 10px rgba(124,58,237,0.25)',
+                }}
+                aria-label="Skip to next song"
+              >
+                {skipped ? (
+                  <>✓ Skipped</>
+                ) : skipping ? (
+                  <>Skipping…</>
+                ) : skipError ? (
+                  <>✗ {skipError}</>
+                ) : (
+                  <>Skip <SkipForward className="w-4 h-4" /></>
+                )}
+              </button>
+            </div>
           )}
           {/* Admin/owner skip — small icon, only when not already the DJ */}
           {isAdminOrOwner && !isCurrentDJ && (
             <button
-              onClick={onSkip}
+              onClick={() => onSkip().catch(console.error)}
               className="p-2.5 rounded-lg border border-border bg-bg-secondary text-text-muted hover:border-neon-purple/50 hover:text-neon-purple transition-all"
               aria-label="Skip track (admin)"
             >
@@ -1020,8 +1082,11 @@ function RightSidebar({
   songHistory,
   isAdminOrOwner,
   activeDJSpot,
+  currentUserId,
+  joiningQueue,
   onSendChat,
   onRemoveFromQueue,
+  onJoinQueue,
 }: {
   queue: (DJQueueEntry & { profile: Profile })[]
   voteCounts: VoteCounts
@@ -1031,8 +1096,11 @@ function RightSidebar({
   songHistory: SongHistoryEntry[]
   isAdminOrOwner: boolean
   activeDJSpot: number | null
+  currentUserId: string | null
+  joiningQueue: boolean
   onSendChat: (text: string) => void
   onRemoveFromQueue: (userId: string) => Promise<void>
+  onJoinQueue: () => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
 
@@ -1062,12 +1130,24 @@ function RightSidebar({
                 const entry = queue.find((q) => q.spot === spot)
                 const isActive = spot === activeDJSpot
                 const p = entry?.profile
+                const isMySpot = entry?.user_id === currentUserId
+                const isUserInQueue = currentUserId ? queue.some((q) => q.user_id === currentUserId) : false
+                const canClaim = !p && !!currentUserId && !isUserInQueue && !joiningQueue
                 return (
                   <div
                     key={spot}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${isActive ? 'bg-neon-cyan/10 border border-neon-cyan/30' : 'border border-border/40 bg-bg-secondary/30'}`}
+                    onClick={canClaim ? onJoinQueue : undefined}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ${
+                      isActive
+                        ? 'bg-neon-cyan/10 border border-neon-cyan/30'
+                        : canClaim
+                        ? 'border border-dashed border-neon-cyan/40 bg-neon-cyan/5 hover:border-neon-cyan hover:bg-neon-cyan/15 hover:shadow-[0_0_8px_rgba(6,182,212,0.35)] cursor-pointer'
+                        : isMySpot
+                        ? 'border border-neon-purple/40 bg-neon-purple/5'
+                        : 'border border-border/40 bg-bg-secondary/30'
+                    }`}
                   >
-                    <span className={`text-xs font-mono shrink-0 w-4 text-center ${isActive ? 'text-neon-cyan' : 'text-text-muted'}`}>
+                    <span className={`text-xs font-mono shrink-0 w-4 text-center ${isActive ? 'text-neon-cyan' : canClaim ? 'text-neon-cyan/60' : 'text-text-muted'}`}>
                       {isActive ? '▶' : spot}
                     </span>
                     {p ? (
@@ -1082,8 +1162,9 @@ function RightSidebar({
                           crossOrigin="anonymous"
                         />
                         <div className="flex flex-col min-w-0 flex-1">
-                          <span className={`text-sm font-semibold truncate ${isActive ? 'text-neon-cyan' : 'text-text-primary'}`}>
+                          <span className={`text-sm font-semibold truncate ${isActive ? 'text-neon-cyan' : isMySpot ? 'text-neon-purple' : 'text-text-primary'}`}>
                             {p.display_name || p.username}
+                            {isMySpot && <span className="ml-1 text-neon-purple" title="Your spot">•</span>}
                             {p.is_admin && <span className="ml-1 text-neon-purple" title="Admin">⚡</span>}
                           </span>
                           {entry && entry.songs.length > 0 && (
@@ -1092,7 +1173,7 @@ function RightSidebar({
                         </div>
                         {isAdminOrOwner && (
                           <button
-                            onClick={() => onRemoveFromQueue(entry!.user_id)}
+                            onClick={(e) => { e.stopPropagation(); onRemoveFromQueue(entry!.user_id) }}
                             className="text-text-muted hover:text-accent-red transition-colors shrink-0"
                             title="Remove DJ from spot"
                           >
@@ -1101,7 +1182,13 @@ function RightSidebar({
                         )}
                       </>
                     ) : (
-                      <span className="text-xs text-text-muted italic">Empty</span>
+                      canClaim ? (
+                        <span className="text-xs text-neon-cyan/70 flex items-center gap-1">
+                          <span className="text-base leading-none">+</span> Open — click to DJ
+                        </span>
+                      ) : (
+                        <span className="text-xs text-text-muted italic">Empty</span>
+                      )
                     )}
                   </div>
                 )
@@ -1414,8 +1501,11 @@ export default function MusicRoom({
           songHistory={songHistory}
           isAdminOrOwner={isAdminOrOwner}
           activeDJSpot={room.active_dj_spot ?? null}
+          currentUserId={currentUserId}
+          joiningQueue={joiningQueue}
           onSendChat={handleSendChat}
           onRemoveFromQueue={onRemoveFromQueue}
+          onJoinQueue={handleJoinQueue}
         />
       </div>
 

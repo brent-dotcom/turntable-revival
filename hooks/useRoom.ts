@@ -32,7 +32,7 @@ interface UseRoomReturn {
   joinQueue: () => Promise<void>
   leaveQueue: () => Promise<void>
   playSong: (track: TrackInfo) => Promise<void>
-  skipSong: () => Promise<void>
+  skipSong: () => Promise<{ ok: boolean; error?: string }>
   castVote: (type: VoteType) => Promise<void>
   removeFromQueue: (userId: string) => Promise<void>
   updateDJSongs: (songs: TrackInfo[]) => Promise<void>
@@ -368,24 +368,41 @@ export function useRoom(roomId: string): UseRoomReturn {
   const joinQueue = useCallback(async () => {
     if (!currentUserId) return
 
-    const takenSpots = queue.map((q) => q.spot)
+    // Use spot ?? position as a fallback so rows inserted before the spot
+    // column existed still contribute to taken-spot tracking.
+    const takenSpots = queue.map((q) => q.spot ?? q.position)
     const nextSpot = [1, 2, 3].find((s) => !takenSpots.includes(s))
-    if (!nextSpot) return // all 3 spots taken
 
-    await supabase.from('dj_queue').insert({
+    console.log('[joinQueue] queue:', queue.map(q => ({ uid: q.user_id.slice(0,8), spot: q.spot, pos: q.position })))
+    console.log('[joinQueue] takenSpots:', takenSpots, '| nextSpot:', nextSpot)
+
+    if (!nextSpot) {
+      console.log('[joinQueue] all spots taken — aborting')
+      return
+    }
+
+    const { error: insertError } = await supabase.from('dj_queue').insert({
       room_id: roomId,
       user_id: currentUserId,
-      position: nextSpot, // keep in sync for backward compat
+      position: nextSpot,
       spot: nextSpot,
       songs: [],
     })
 
-    // If no DJ is currently active, set this spot as active
+    if (insertError) {
+      console.error('[joinQueue] insert failed:', insertError.message, '| code:', insertError.code)
+      return
+    }
+
+    console.log('[joinQueue] ✓ inserted at spot', nextSpot)
+
+    // If no DJ is currently active, promote this DJ immediately
     if (!room?.current_dj_id) {
-      await supabase
+      const { error: promoteError } = await supabase
         .from('rooms')
         .update({ current_dj_id: currentUserId, active_dj_spot: nextSpot })
         .eq('id', roomId)
+      console.log('[joinQueue] promote to active DJ:', promoteError?.message ?? 'ok')
     }
   }, [currentUserId, queue, room?.current_dj_id, roomId, supabase])
 
@@ -421,14 +438,22 @@ export function useRoom(roomId: string): UseRoomReturn {
     })
   }, [roomId, currentUserId, supabase])
 
-  const skipSong = useCallback(async () => {
+  const skipSong = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
     const { data: { session } } = await supabase.auth.getSession()
-    await fetch(`/api/rooms/${roomId}/skip`, {
+    console.log('[skipSong] calling skip API, token present:', !!session?.access_token)
+    const res = await fetch(`/api/rooms/${roomId}/skip`, {
       method: 'POST',
       headers: session?.access_token
         ? { 'Authorization': `Bearer ${session.access_token}` }
         : {},
     })
+    const body = await res.json().catch(() => ({}))
+    console.log('[skipSong] response:', res.status, body)
+    if (!res.ok) {
+      console.warn('[skipSong] skip failed:', res.status, body?.error)
+      return { ok: false, error: body?.error ?? `HTTP ${res.status}` }
+    }
+    return { ok: true }
   }, [roomId, supabase])
 
   const castVote = useCallback(async (type: VoteType) => {

@@ -70,11 +70,18 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
     // Only the active DJ's client advances the queue — prevents race conditions
     // where a spectator's request wins the cooldown claim and the dj_queue UPDATE
     // silently fails RLS (auth.uid() ≠ DJ's user_id).
-    if (!isCurrentDJ) return
-    if (skippingRef.current) return
+    if (!isCurrentDJ) {
+      console.log('[AutoAdvance] not current DJ — skipping')
+      return
+    }
+    if (skippingRef.current) {
+      console.log('[AutoAdvance] already skipping — skipping')
+      return
+    }
     skippingRef.current = true
-    console.log('[AutoAdvance] Song ended — DJ client triggering skip')
-    await skipSong()
+    console.log('[AutoAdvance] song ended, isCurrentDJ=true, triggering skip')
+    const result = await skipSong()
+    console.log('[AutoAdvance] skip result:', result)
     setTimeout(() => { skippingRef.current = false }, 3_000)
   }
 
