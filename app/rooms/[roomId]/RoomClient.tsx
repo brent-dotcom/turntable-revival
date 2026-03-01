@@ -53,18 +53,32 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
   // The current user's queue entry (contains their songs array)
   const currentUserDJEntry = queue.find((q) => q.user_id === currentUserId) ?? null
 
-  // Prompt the active DJ to pick a song when it's their turn and nothing is playing
+  // When it's our turn and nothing is playing:
+  // - if we have songs queued, auto-play the first one
+  // - otherwise open the song picker
+  // autoPlayRef prevents double-firing when deps change mid-transition.
+  const autoPlayRef = useRef(false)
   useEffect(() => {
-    if (isCurrentDJ && !hasVideo) {
+    if (!isCurrentDJ || hasVideo) {
+      autoPlayRef.current = false  // reset for next turn
+      return
+    }
+    if (autoPlayRef.current) return
+
+    const songs = currentUserDJEntry?.songs ?? []
+    if (songs.length > 0) {
+      autoPlayRef.current = true
+      console.log('[AutoPlay] auto-playing queued song:', songs[0].title)
+      playSong(songs[0]).catch(console.error)
+    } else {
       setShowSongPicker(true)
     }
-  }, [isCurrentDJ, hasVideo])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCurrentDJ, hasVideo, currentUserDJEntry])
 
-  // Close song picker if something started playing automatically (e.g. auto-advance)
+  // Close song picker if a song starts playing (e.g. auto-advance picked one)
   useEffect(() => {
-    if (hasVideo) {
-      setShowSongPicker(false)
-    }
+    if (hasVideo) setShowSongPicker(false)
   }, [hasVideo])
 
   async function handleJoinQueue() {

@@ -195,61 +195,9 @@ export async function POST(
     return NextResponse.json({ error: advanceError.message }, { status: 500 })
   }
 
+  // The new DJ's own client will auto-play their first queued song via
+  // the RoomClient useEffect — no server-side auto-play needed here
+  // (running under the old DJ's token can't read the new DJ's dj_queue rows).
   console.log('[Skip] ✓ advance_dj_queue completed')
-
-  // After rotation, check if the new DJ already has songs queued and auto-play
-  // the first one so the room never goes silent between DJs.
-  const { data: updatedRoom } = await supabase
-    .from('rooms')
-    .select('current_dj_id')
-    .eq('id', roomId)
-    .single()
-
-  if (updatedRoom?.current_dj_id) {
-    const { data: newDJEntry } = await supabase
-      .from('dj_queue')
-      .select('id, songs')
-      .eq('room_id', roomId)
-      .eq('user_id', updatedRoom.current_dj_id)
-      .single()
-
-    console.log('[Skip] new DJ songs:', JSON.stringify(newDJEntry?.songs ?? []))
-
-    if (newDJEntry && Array.isArray(newDJEntry.songs) && newDJEntry.songs.length > 0) {
-      const [firstSong, ...remainingSongs] = newDJEntry.songs as TrackInfo[]
-
-      // Remove first song from queue
-      await supabase
-        .from('dj_queue')
-        .update({ songs: remainingSongs })
-        .eq('id', newDJEntry.id)
-
-      // Start playing
-      await supabase
-        .from('rooms')
-        .update({
-          current_video_id: firstSong.videoId ?? null,
-          current_video_title: firstSong.title,
-          current_video_thumbnail: firstSong.thumbnail ?? null,
-          current_track_source: firstSong.source ?? 'youtube',
-          current_track_url: firstSong.trackUrl ?? null,
-          video_started_at: new Date().toISOString(),
-        })
-        .eq('id', roomId)
-
-      // Log to song_history
-      await supabase.from('song_history').insert({
-        room_id: roomId,
-        played_by_user_id: updatedRoom.current_dj_id,
-        track_url: firstSong.trackUrl,
-        track_title: firstSong.title,
-        track_source: firstSong.source ?? 'youtube',
-      })
-
-      console.log('[Skip] ✓ auto-played new DJ first song:', firstSong.title)
-      return NextResponse.json({ ok: true, action: 'advance_queue_autoplay', track: firstSong.title })
-    }
-  }
-
   return NextResponse.json({ ok: true, action: 'advance_queue' })
 }
