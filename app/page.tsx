@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Disc3, Music, Users, Zap, Radio, ChevronRight, LogIn } from 'lucide-react'
-import { buildAvatarUrl } from '@/lib/avatar'
+import { generateAvatarDataUrl } from '@/lib/avatar'
 import type { RoomWithDJ } from '@/types'
 
 export const revalidate = 0
@@ -24,7 +24,7 @@ const GENRE_STYLE: Record<string, { bg: string; color: string; border: string }>
 const DEFAULT_GENRE = { bg: 'rgba(107,104,128,0.15)', color: '#9ca3af', border: 'rgba(107,104,128,0.3)' }
 
 function djAvatarUrl(profile: RoomWithDJ['dj_profile']): string {
-  return buildAvatarUrl(profile?.avatar_seed || profile?.username || 'default')
+  return generateAvatarDataUrl(profile?.avatar_seed || profile?.username || 'default')
 }
 
 // ─── Room Card (server-rendered) ─────────────────────────────────────────────

@@ -19,7 +19,7 @@ import {
   Crown,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { buildAvatarUrl, seedToColor } from "@/lib/avatar"
+import { generateAvatarDataUrl, seedToColor } from "@/lib/avatar"
 import TrackPlayer from "@/components/room/TrackPlayer"
 import AuthPromptModal from "@/components/ui/AuthPromptModal"
 import MyQueuePanel from "@/components/room/MyQueuePanel"
@@ -68,7 +68,7 @@ interface MusicRoomProps {
 // ─── Avatar URL helper ──────────────────────────────────────────────────────
 
 function avatarUrl(profile: Profile | null | undefined): string {
-  return buildAvatarUrl(profile?.avatar_seed || profile?.username || 'default')
+  return generateAvatarDataUrl(profile?.avatar_seed || profile?.username || 'default')
 }
 
 // ─── Avatar image with initial-circle fallback ──────────────────────────────
@@ -492,7 +492,7 @@ function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[
   const botOpacity = showBots ? Math.max(0.3, 0.6 * (1 - realUserCount / 8)) : 0
   const botAvatars = showBots ? BOTS.map((bot, i) => ({
     name: bot.name,
-    url: buildAvatarUrl(bot.seed),
+    url: generateAvatarDataUrl(bot.seed),
     profile: null as Profile | null,
     row: i < 5 ? 1 : 2, // first 5 in middle row, last 5 in back row
     isBot: true,

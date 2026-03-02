@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { buildAvatarUrl, seedToColor } from '@/lib/avatar'
+import { generateAvatarDataUrl, seedToColor } from '@/lib/avatar'
 
 // Re-export for components that import directly from here
-export { buildAvatarUrl, seedToColor }
-/** @deprecated use buildAvatarUrl */
-export { buildAvatarUrl as buildDiceBearUrl }
+export { generateAvatarDataUrl, seedToColor }
+/** @deprecated use generateAvatarDataUrl */
+export { generateAvatarDataUrl as buildAvatarUrl }
+/** @deprecated use generateAvatarDataUrl */
+export { generateAvatarDataUrl as buildDiceBearUrl }
 
 interface AvatarProps {
   seed: string | null | undefined
@@ -37,7 +39,7 @@ export default function Avatar({
   const [imgError, setImgError] = useState(false)
   const px = SIZE_MAP[size]
   const isEmpty = !seed || !seed.trim()
-  const url = isEmpty ? '' : buildAvatarUrl(seed)
+  const url = isEmpty ? '' : generateAvatarDataUrl(seed)
   const initial = (label || seed || '?')[0].toUpperCase()
   const color = seedToColor(seed || label || 'default')
 

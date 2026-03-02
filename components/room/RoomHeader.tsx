@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import type { Profile, Room } from '@/types'
-import { buildAvatarUrl } from '@/lib/avatar'
+import { generateAvatarDataUrl } from '@/lib/avatar'
 import { Disc3, User, Users } from 'lucide-react'
 import Link from 'next/link'
 
@@ -56,7 +56,7 @@ export default function RoomHeader({ room, memberCount, currentUserProfile }: Ro
           <Link href="/profile" className="flex-shrink-0" title="Your profile">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={buildAvatarUrl(currentUserProfile.avatar_seed || currentUserProfile.username)}
+              src={generateAvatarDataUrl(currentUserProfile.avatar_seed || currentUserProfile.username)}
               alt="Your avatar"
               width={30}
               height={30}

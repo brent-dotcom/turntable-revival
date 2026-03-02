@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@multiavatar/multiavatar": "^1.0.7",
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.45.0",
     "clsx": "^2.1.1",

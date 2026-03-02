@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { buildAvatarUrl } from '@/lib/avatar'
+import { generateAvatarDataUrl } from '@/lib/avatar'
 import { Users, Music, Disc3, Plus, Radio, Trash2, ShieldCheck } from 'lucide-react'
 import type { RoomWithDJ } from '@/types'
 
@@ -28,7 +28,7 @@ const DEFAULT_GENRE_STYLE = { bg: 'rgba(107,104,128,0.15)', color: '#9ca3af', bo
 // ─── Avatar helper ───────────────────────────────────────────────────────────
 
 function djAvatarUrl(profile: RoomWithDJ['dj_profile']): string {
-  return buildAvatarUrl(profile?.avatar_seed || profile?.username || 'default')
+  return generateAvatarDataUrl(profile?.avatar_seed || profile?.username || 'default')
 }
 
 // ─── Re-fetch a single room with DJ profile ──────────────────────────────────
