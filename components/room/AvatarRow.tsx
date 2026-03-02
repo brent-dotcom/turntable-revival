@@ -1,6 +1,6 @@
 'use client'
 
-import Avatar, { seedToColor } from '@/components/avatar/Avatar'
+import Avatar from '@/components/avatar/Avatar'
 import { cn } from '@/lib/utils'
 import type { Profile, RoomMember, Vote, VoteType } from '@/types'
 import { useEffect, useRef, useState } from 'react'
@@ -86,9 +86,6 @@ export default function AvatarRow({
             </div>
             <Avatar
               seed={profile.avatar_seed || profile.username}
-              bgColor={profile.avatar_seed ? profile.avatar_bg_color : seedToColor(profile.username)}
-              accessory={profile.avatar_accessory || 'none'}
-              hair={profile.avatar_hair || 'short01'}
               size="sm"
               bouncing={isBouncing}
               shaking={isShaking}

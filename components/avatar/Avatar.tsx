@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { buildAvatarUrl, seedToColor } from '@/lib/avatar'
+
+// Re-export for components that import directly from here
+export { buildAvatarUrl, seedToColor }
+/** @deprecated use buildAvatarUrl */
+export { buildAvatarUrl as buildDiceBearUrl }
 
 interface AvatarProps {
   seed: string | null | undefined
-  bgColor?: string
-  accessory?: string
-  hair?: string
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   bouncing?: boolean
   shaking?: boolean
@@ -23,14 +26,8 @@ const SIZE_MAP = {
   xl: 100,
 }
 
-import { buildDiceBearUrl, seedToColor } from '@/lib/avatar'
-export { buildDiceBearUrl, seedToColor }
-
 export default function Avatar({
   seed,
-  bgColor = 'b6e3f4',
-  accessory = 'none',
-  hair = 'short01',
   size = 'md',
   bouncing = false,
   shaking = false,
@@ -40,8 +37,10 @@ export default function Avatar({
   const [imgError, setImgError] = useState(false)
   const px = SIZE_MAP[size]
   const isEmpty = !seed || !seed.trim()
-  const url = isEmpty ? '' : buildDiceBearUrl(seed, bgColor, accessory, hair)
+  const url = isEmpty ? '' : buildAvatarUrl(seed)
   const initial = (label || seed || '?')[0].toUpperCase()
+  const color = seedToColor(seed || label || 'default')
+
   return (
     <div className={cn('flex flex-col items-center gap-1', className)}>
       <div
@@ -55,7 +54,7 @@ export default function Avatar({
         {isEmpty || imgError ? (
           <div
             className="w-full h-full flex items-center justify-center font-bold text-white/80"
-            style={{ backgroundColor: `#${(bgColor || 'b6e3f4').replace('#', '')}`, fontSize: Math.round(px * 0.4) }}
+            style={{ backgroundColor: `#${color}`, fontSize: Math.round(px * 0.4) }}
           >
             {isEmpty ? '♪' : initial}
           </div>
@@ -67,7 +66,6 @@ export default function Avatar({
             width={px}
             height={px}
             className="w-full h-full object-cover"
-            style={{ imageRendering: 'pixelated' }}
             onError={() => setImgError(true)}
           />
         )}

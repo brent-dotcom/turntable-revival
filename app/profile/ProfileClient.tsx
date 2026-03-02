@@ -4,7 +4,7 @@ import AvatarCustomizer from '@/components/avatar/AvatarCustomizer'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase/client'
-import type { AvatarAccessory, AvatarHair, Profile } from '@/types'
+import type { Profile } from '@/types'
 import { Disc3, LogOut, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -134,12 +134,7 @@ export default function ProfileClient({ profile, userEmail }: ProfileClientProps
           </h2>
           <AvatarCustomizer
             userId={profile.id}
-            seed={profile.username}
-            initial={{
-              bgColor: profile.avatar_bg_color || 'b6e3f4',
-              accessory: (profile.avatar_accessory || 'none') as AvatarAccessory,
-              hair: (profile.avatar_hair || 'short01') as AvatarHair,
-            }}
+            initialSeed={profile.avatar_seed || profile.username}
           />
         </div>
       </div>

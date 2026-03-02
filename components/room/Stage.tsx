@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import Avatar, { seedToColor } from '@/components/avatar/Avatar'
+import Avatar from '@/components/avatar/Avatar'
 import YouTubePlayer from '@/components/room/YouTubePlayer'
 import Button from '@/components/ui/Button'
 import { Disc3, Music } from 'lucide-react'
@@ -205,9 +205,6 @@ export default function Stage({
                 <span className="text-base animate-bounce-slow z-10">👑</span>
                 <Avatar
                   seed={currentDJProfile.avatar_seed || currentDJProfile.username}
-                  bgColor={currentDJProfile.avatar_seed ? currentDJProfile.avatar_bg_color : seedToColor(currentDJProfile.username)}
-                  accessory={currentDJProfile.avatar_accessory || 'none'}
-                  hair={currentDJProfile.avatar_hair || 'short01'}
                   size="lg"
                   label={currentDJProfile.display_name || currentDJProfile.username}
                 />
@@ -228,9 +225,6 @@ export default function Stage({
             <div key={slot.id} className="flex flex-col items-center gap-1">
               <Avatar
                 seed={p.avatar_seed || p.username}
-                bgColor={p.avatar_seed ? p.avatar_bg_color : seedToColor(p.username)}
-                accessory={p.avatar_accessory || 'none'}
-                hair={p.avatar_hair || 'short01'}
                 size="sm"
                 label={p.display_name || p.username}
               />

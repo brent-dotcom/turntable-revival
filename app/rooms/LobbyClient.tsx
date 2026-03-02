@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { buildDiceBearUrl, seedToColor } from '@/lib/avatar'
+import { buildAvatarUrl } from '@/lib/avatar'
 import { Users, Music, Disc3, Plus, Radio, Trash2, ShieldCheck } from 'lucide-react'
 import type { RoomWithDJ } from '@/types'
 
@@ -28,13 +28,7 @@ const DEFAULT_GENRE_STYLE = { bg: 'rgba(107,104,128,0.15)', color: '#9ca3af', bo
 // ─── Avatar helper ───────────────────────────────────────────────────────────
 
 function djAvatarUrl(profile: RoomWithDJ['dj_profile']): string {
-  if (!profile?.username) return buildDiceBearUrl('default', 'b6e3f4', 'none', 'short01')
-  return buildDiceBearUrl(
-    profile.avatar_seed || profile.username,
-    profile.avatar_seed ? (profile.avatar_bg_color || 'b6e3f4') : seedToColor(profile.username),
-    profile.avatar_accessory || 'none',
-    profile.avatar_hair || 'short01',
-  )
+  return buildAvatarUrl(profile?.avatar_seed || profile?.username || 'default')
 }
 
 // ─── Re-fetch a single room with DJ profile ──────────────────────────────────
@@ -55,7 +49,7 @@ async function fetchRoomWithDJ(
   if (room.current_dj_id) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, username, display_name, avatar_seed, avatar_bg_color, avatar_hair, avatar_accessory')
+      .select('id, username, display_name, avatar_seed')
       .eq('id', room.current_dj_id)
       .single()
     dj_profile = data

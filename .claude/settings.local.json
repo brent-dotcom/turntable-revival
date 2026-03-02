@@ -17,7 +17,8 @@
       "Bash(vercel:*)",
       "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/github_turntable\" git:*)",
       "Bash(curl:*)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(xargs basename:*)"
     ]
   }
 }

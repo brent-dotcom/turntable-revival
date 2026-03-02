@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Disc3, Music, Users, Zap, Radio, ChevronRight, LogIn } from 'lucide-react'
-import { buildDiceBearUrl, seedToColor } from '@/lib/avatar'
+import { buildAvatarUrl } from '@/lib/avatar'
 import type { RoomWithDJ } from '@/types'
 
 export const revalidate = 0
@@ -24,13 +24,7 @@ const GENRE_STYLE: Record<string, { bg: string; color: string; border: string }>
 const DEFAULT_GENRE = { bg: 'rgba(107,104,128,0.15)', color: '#9ca3af', border: 'rgba(107,104,128,0.3)' }
 
 function djAvatarUrl(profile: RoomWithDJ['dj_profile']): string {
-  if (!profile?.username) return buildDiceBearUrl('default', 'b6e3f4', 'none', 'short01')
-  return buildDiceBearUrl(
-    profile.avatar_seed || profile.username,
-    profile.avatar_seed ? (profile.avatar_bg_color || 'b6e3f4') : seedToColor(profile.username),
-    profile.avatar_accessory || 'none',
-    profile.avatar_hair || 'short01',
-  )
+  return buildAvatarUrl(profile?.avatar_seed || profile?.username || 'default')
 }
 
 // ─── Room Card (server-rendered) ─────────────────────────────────────────────
@@ -145,7 +139,7 @@ export default async function HomePage() {
   if (djIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, username, display_name, avatar_seed, avatar_bg_color, avatar_hair, avatar_accessory')
+      .select('id, username, display_name, avatar_seed')
       .in('id', djIds)
     for (const p of profiles ?? []) djMap[p.id] = p
   }

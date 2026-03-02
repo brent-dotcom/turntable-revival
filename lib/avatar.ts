@@ -8,22 +8,11 @@ export function seedToColor(id: string): string {
   return PALETTE[h % PALETTE.length]
 }
 
-export function buildDiceBearUrl(
-  seed: string,
-  bgColor = 'b6e3f4',
-  accessory = 'none',
-  hair = 'short01'
-): string {
-  const safeSeed = seed || 'default'
-  const safeColor = (bgColor || 'b6e3f4').replace('#', '')
-  const safeHair = hair || 'short01'
-  const parts = [
-    `seed=${encodeURIComponent(safeSeed)}`,
-    `backgroundColor=${safeColor}`,
-    `hair=${safeHair}`,
-    accessory && accessory !== 'none'
-      ? `accessories=${accessory}&accessoriesProbability=100`
-      : 'accessoriesProbability=0',
-  ]
-  return `https://api.dicebear.com/7.x/pixel-art/svg?${parts.join('&')}`
+/** Build a Multiavatar URL for a given seed (username or avatar_seed). */
+export function buildAvatarUrl(seed: string): string {
+  const safeSeed = (seed || 'default').trim()
+  return `https://api.multiavatar.com/${encodeURIComponent(safeSeed)}.svg`
 }
+
+/** @deprecated alias kept for import compatibility — use buildAvatarUrl */
+export const buildDiceBearUrl = buildAvatarUrl

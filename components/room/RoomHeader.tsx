@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import type { Profile, Room } from '@/types'
-import { buildDiceBearUrl, seedToColor } from '@/components/avatar/Avatar'
+import { buildAvatarUrl } from '@/lib/avatar'
 import { Disc3, User, Users } from 'lucide-react'
 import Link from 'next/link'
 
@@ -56,17 +56,11 @@ export default function RoomHeader({ room, memberCount, currentUserProfile }: Ro
           <Link href="/profile" className="flex-shrink-0" title="Your profile">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={buildDiceBearUrl(
-                currentUserProfile.avatar_seed || currentUserProfile.username,
-                currentUserProfile.avatar_seed ? currentUserProfile.avatar_bg_color : seedToColor(currentUserProfile.username),
-                currentUserProfile.avatar_accessory || 'none',
-                currentUserProfile.avatar_hair || 'short01'
-              )}
+              src={buildAvatarUrl(currentUserProfile.avatar_seed || currentUserProfile.username)}
               alt="Your avatar"
               width={30}
               height={30}
               className="rounded-lg ring-1 ring-white/20 hover:ring-accent-purple/60 transition-all"
-              style={{ imageRendering: 'pixelated' }}
             />
           </Link>
         ) : (

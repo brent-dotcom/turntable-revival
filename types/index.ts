@@ -21,16 +21,6 @@ export interface TrackInfo {
 // ============================================================
 
 export type AvatarType = 'human' | 'robot' | 'cat' | 'alien'
-export type AvatarAccessory = 'none' | 'variant01' | 'variant02' | 'variant03' | 'variant04'
-export type AvatarHair =
-  | 'short01'
-  | 'short02'
-  | 'short03'
-  | 'short04'
-  | 'short05'
-  | 'long01'
-  | 'long02'
-  | 'mohawk01'
 export type VoteType = 'awesome' | 'lame'
 
 export interface Profile {
@@ -41,11 +31,12 @@ export interface Profile {
   // Legacy fields (still in DB)
   avatar_type: AvatarType
   avatar_color: string
-  // DiceBear avatar fields
+  // Avatar seed — used as Multiavatar seed
   avatar_seed: string | null
+  // Kept for DB compatibility (no longer used for rendering)
   avatar_bg_color: string
-  avatar_accessory: AvatarAccessory
-  avatar_hair: AvatarHair
+  avatar_accessory: string
+  avatar_hair: string
   dj_points: number
   created_at: string
   updated_at: string
@@ -89,7 +80,7 @@ export interface SongHistoryEntry {
 }
 
 export interface RoomWithDJ extends Room {
-  dj_profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_seed' | 'avatar_bg_color' | 'avatar_hair' | 'avatar_accessory'> | null
+  dj_profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_seed'> | null
 }
 
 export interface RoomMember {
@@ -167,46 +158,6 @@ export interface PlaybackState {
   isPlaying: boolean
   elapsedSeconds: number
 }
-
-// ============================================================
-// Avatar Config
-// ============================================================
-
-export interface AvatarConfig {
-  bgColor: string
-  accessory: AvatarAccessory
-  hair: AvatarHair
-}
-
-export const AVATAR_BG_COLORS: string[] = [
-  'b6e3f4', // sky blue
-  'c0aede', // lavender
-  'ffd5dc', // rose
-  'ffdfbf', // peach
-  'd1fae5', // mint
-  'fef3c7', // gold
-  '7c3aed', // purple (brand)
-  '06b6d4', // cyan (brand)
-]
-
-export const AVATAR_ACCESSORIES: { value: AvatarAccessory; label: string; emoji: string }[] = [
-  { value: 'none', label: 'None', emoji: '—' },
-  { value: 'variant01', label: 'Style A', emoji: '😎' },
-  { value: 'variant02', label: 'Style B', emoji: '🤓' },
-  { value: 'variant03', label: 'Style C', emoji: '✨' },
-  { value: 'variant04', label: 'Style D', emoji: '🌟' },
-]
-
-export const AVATAR_HAIR_STYLES: { value: AvatarHair; label: string }[] = [
-  { value: 'short01', label: 'Short A' },
-  { value: 'short02', label: 'Short B' },
-  { value: 'short03', label: 'Short C' },
-  { value: 'short04', label: 'Short D' },
-  { value: 'short05', label: 'Short E' },
-  { value: 'long01', label: 'Long A' },
-  { value: 'long02', label: 'Long B' },
-  { value: 'mohawk01', label: 'Mohawk' },
-]
 
 // Legacy — kept for type compatibility
 export const AVATAR_TYPES: { value: AvatarType; label: string; emoji: string }[] = [

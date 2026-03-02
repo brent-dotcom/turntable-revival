@@ -19,7 +19,7 @@ import {
   Crown,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { buildDiceBearUrl, seedToColor } from "@/lib/avatar"
+import { buildAvatarUrl, seedToColor } from "@/lib/avatar"
 import TrackPlayer from "@/components/room/TrackPlayer"
 import AuthPromptModal from "@/components/ui/AuthPromptModal"
 import MyQueuePanel from "@/components/room/MyQueuePanel"
@@ -68,13 +68,7 @@ interface MusicRoomProps {
 // ─── Avatar URL helper ──────────────────────────────────────────────────────
 
 function avatarUrl(profile: Profile | null | undefined): string {
-  if (!profile?.username) return buildDiceBearUrl('default', 'b6e3f4', 'none', 'short01')
-  return buildDiceBearUrl(
-    profile.avatar_seed || profile.username,
-    profile.avatar_seed ? profile.avatar_bg_color : seedToColor(profile.username),
-    profile.avatar_accessory || "none",
-    profile.avatar_hair || "short01"
-  )
+  return buildAvatarUrl(profile?.avatar_seed || profile?.username || 'default')
 }
 
 // ─── Avatar image with initial-circle fallback ──────────────────────────────
@@ -498,7 +492,7 @@ function DanceFloor({ members }: { members: (RoomMember & { profile: Profile })[
   const botOpacity = showBots ? Math.max(0.3, 0.6 * (1 - realUserCount / 8)) : 0
   const botAvatars = showBots ? BOTS.map((bot, i) => ({
     name: bot.name,
-    url: buildDiceBearUrl(bot.seed, bot.bgColor, 'none', 'short01'),
+    url: buildAvatarUrl(bot.seed),
     profile: null as Profile | null,
     row: i < 5 ? 1 : 2, // first 5 in middle row, last 5 in back row
     isBot: true,
