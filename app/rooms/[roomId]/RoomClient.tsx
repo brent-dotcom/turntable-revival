@@ -34,6 +34,7 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
     leaveQueue,
     playSong,
     skipSong,
+    clearCurrentTrack,
     castVote,
     removeFromQueue,
     updateDJSongs,
@@ -85,6 +86,15 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
     setJoiningQueue(true)
     await joinQueue()
     setJoiningQueue(false)
+  }
+
+  async function handleEmbedError() {
+    // A video can't be embedded — clear the track so the DJ stays on stage,
+    // then open the picker so they can choose a different song.
+    if (!isCurrentDJ) return
+    console.warn('[EmbedError] video not embeddable — clearing track, opening picker')
+    await clearCurrentTrack()
+    setShowSongPicker(true)
   }
 
   async function handleSongEnded() {
@@ -158,6 +168,7 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
         }}
         onSkip={skipSong}
         onEnded={handleSongEnded}
+        onEmbedError={handleEmbedError}
         onVote={castVote}
         currentUserDJEntry={currentUserDJEntry}
         onRemoveFromQueue={removeFromQueue}

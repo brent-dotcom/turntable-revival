@@ -8,6 +8,7 @@ interface YouTubePlayerProps {
   onEnded?: () => void
   onReady?: () => void
   onPlayerReady?: (player: YT.Player) => void
+  onEmbedError?: () => void
   muted?: boolean
 }
 
@@ -49,6 +50,7 @@ export default function YouTubePlayer({
   onEnded,
   onReady,
   onPlayerReady,
+  onEmbedError,
   muted = false,
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -56,12 +58,14 @@ export default function YouTubePlayer({
   const onEndedRef = useRef(onEnded)
   const onReadyRef = useRef(onReady)
   const onPlayerReadyRef = useRef(onPlayerReady)
+  const onEmbedErrorRef = useRef(onEmbedError)
   // Capture startSeconds only once — changing it must not recreate the player
   const startSecondsRef = useRef(startSeconds)
 
   useEffect(() => { onEndedRef.current = onEnded }, [onEnded])
   useEffect(() => { onReadyRef.current = onReady }, [onReady])
   useEffect(() => { onPlayerReadyRef.current = onPlayerReady }, [onPlayerReady])
+  useEffect(() => { onEmbedErrorRef.current = onEmbedError }, [onEmbedError])
 
   const createPlayer = useCallback(async () => {
     await loadYouTubeAPI()
@@ -111,8 +115,15 @@ export default function YouTubePlayer({
         },
         onError: (event) => {
           console.error('YouTube player error:', event.data)
-          // On error, call onEnded to advance queue
-          if ([2, 5, 100, 101, 150].includes(event.data)) {
+          // 101/150 = embedding not allowed for this video — don't advance the
+          // queue, just notify the caller so the DJ can pick a different song.
+          if ([101, 150].includes(event.data)) {
+            console.warn('[YT] Embedding not allowed — calling onEmbedError')
+            onEmbedErrorRef.current?.()
+            return
+          }
+          // Other errors (2=bad param, 5=HTML5 error, 100=not found) — skip normally
+          if ([2, 5, 100].includes(event.data)) {
             onEndedRef.current?.()
           }
         },

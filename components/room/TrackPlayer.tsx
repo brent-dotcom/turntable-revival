@@ -14,6 +14,7 @@ interface TrackPlayerProps {
   playbackElapsed: number
   onEnded: () => void
   onPlayerReady?: (player: YT.Player) => void
+  onEmbedError?: () => void
 }
 
 /** Hidden 1px player — keeps audio alive for all three source types */
@@ -24,6 +25,7 @@ export default function TrackPlayer({
   playbackElapsed,
   onEnded,
   onPlayerReady,
+  onEmbedError,
 }: TrackPlayerProps) {
   const hiddenStyle: React.CSSProperties = {
     position: 'absolute',
@@ -43,6 +45,7 @@ export default function TrackPlayer({
           startSeconds={playbackElapsed}
           onEnded={onEnded}
           onPlayerReady={onPlayerReady}
+          onEmbedError={onEmbedError}
           muted={false}
         />
       </div>

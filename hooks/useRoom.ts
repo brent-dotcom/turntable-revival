@@ -33,6 +33,7 @@ interface UseRoomReturn {
   leaveQueue: () => Promise<void>
   playSong: (track: TrackInfo) => Promise<void>
   skipSong: () => Promise<{ ok: boolean; error?: string }>
+  clearCurrentTrack: () => Promise<void>
   castVote: (type: VoteType) => Promise<void>
   removeFromQueue: (userId: string) => Promise<void>
   updateDJSongs: (songs: TrackInfo[]) => Promise<void>
@@ -438,6 +439,21 @@ export function useRoom(roomId: string): UseRoomReturn {
     })
   }, [roomId, currentUserId, supabase])
 
+  /** Clear the current track without changing the active DJ — used when a video can't be embedded */
+  const clearCurrentTrack = useCallback(async () => {
+    await supabase
+      .from('rooms')
+      .update({
+        current_video_id: null,
+        current_video_title: null,
+        current_video_thumbnail: null,
+        current_track_source: null,
+        current_track_url: null,
+        video_started_at: null,
+      })
+      .eq('id', roomId)
+  }, [roomId, supabase])
+
   const skipSong = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
     const { data: { session } } = await supabase.auth.getSession()
     console.log('[skipSong] calling skip API, token present:', !!session?.access_token)
@@ -545,6 +561,7 @@ export function useRoom(roomId: string): UseRoomReturn {
     leaveQueue,
     playSong,
     skipSong,
+    clearCurrentTrack,
     castVote,
     removeFromQueue,
     updateDJSongs,

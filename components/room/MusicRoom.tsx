@@ -55,6 +55,7 @@ interface MusicRoomProps {
   onPickSong: () => void
   onSkip: () => Promise<{ ok: boolean; error?: string }>
   onEnded: () => void
+  onEmbedError?: () => void
   onVote: (type: VoteType) => void
   // New: queue management + room admin
   currentUserDJEntry: (DJQueueEntry & { profile: Profile }) | null
@@ -1298,6 +1299,7 @@ export default function MusicRoom({
   onPickSong,
   onSkip,
   onEnded,
+  onEmbedError,
   onVote,
   currentUserDJEntry,
   onRemoveFromQueue,
@@ -1470,6 +1472,7 @@ export default function MusicRoom({
           trackUrl={room.current_track_url ?? room.current_video_id ?? ''}
           playbackElapsed={playbackElapsed}
           onEnded={onEnded}
+          onEmbedError={onEmbedError}
           onPlayerReady={(player) => { ytPlayerRef.current = player }}
         />
       )}
