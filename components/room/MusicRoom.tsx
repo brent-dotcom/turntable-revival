@@ -1026,11 +1026,22 @@ function ChatPanel({
   onSend: (text: string) => void
 }) {
   const [input, setInput] = useState("")
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  // Track whether user is near the bottom so we don't force-scroll when they're reading history
+  const isNearBottomRef = useRef(true)
 
+  function handleScroll() {
+    const el = containerRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    isNearBottomRef.current = distanceFromBottom < 80
+  }
+
+  // Auto-scroll to latest message only when already near the bottom
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    if (isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages])
 
@@ -1038,16 +1049,23 @@ function ChatPanel({
     if (!input.trim() || disabled) return
     onSend(input.trim())
     setInput("")
+    // Always scroll to bottom after sending your own message
+    isNearBottomRef.current = true
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
   }
 
   return (
-    <aside className="flex flex-col w-full bg-bg-card border-l border-border" aria-label="Chat">
-      <div className="px-3 py-2.5 border-b border-border">
+    <aside className="flex flex-col h-full bg-bg-card border-l border-border" aria-label="Chat">
+      <div className="px-3 py-2.5 border-b border-border shrink-0">
         <span className="text-xs font-semibold text-neon-purple uppercase tracking-widest neon-text-purple">
           Room Chat
         </span>
       </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-3 max-h-[200px] md:max-h-none">
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-3"
+      >
         {messages.map((msg) =>
           msg.system ? (
             <div key={msg.id} className="flex items-center gap-1.5 py-0.5">
@@ -1069,10 +1087,11 @@ function ChatPanel({
         {messages.length === 0 && (
           <p className="text-sm text-text-secondary text-center py-4">No messages yet</p>
         )}
+        <div ref={bottomRef} />
       </div>
       <form
         onSubmit={(e) => { e.preventDefault(); handleSend() }}
-        className="flex items-center gap-2 p-2.5 border-t border-border"
+        className="flex items-center gap-2 p-2.5 border-t border-border shrink-0"
       >
         <input
           type="text"
