@@ -1396,6 +1396,41 @@ export default function MusicRoom({
   const currentUserProfileRef = useRef(currentUserProfile)
   useEffect(() => { currentUserProfileRef.current = currentUserProfile }, [currentUserProfile])
 
+  // ── Mobile audio unlock ─────────────────────────────────────────────────────
+  // iOS Safari and Android Chrome block autoplay until a real user gesture.
+  // We show a full-screen tap overlay; one tap satisfies the browser and
+  // unlocks audio for the rest of the session.
+  const [isMobile, setIsMobile] = useState(false)
+  const [audioUnlocked, setAudioUnlocked] = useState(false)
+  const isMobileRef = useRef(false)
+  const hasVideoRef = useRef(hasVideo)
+  useEffect(() => { hasVideoRef.current = hasVideo }, [hasVideo])
+
+  useEffect(() => {
+    const mobile =
+      /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+      window.innerWidth < 768
+    isMobileRef.current = mobile
+    setIsMobile(mobile)
+  }, [])
+
+  function handleUnlockAudio() {
+    ytPlayerRef.current?.playVideo()
+    setAudioUnlocked(true)
+  }
+
+  // Resume playback when the user switches back to this tab on mobile
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (!isMobileRef.current) return
+      if (document.visibilityState === 'visible' && hasVideoRef.current) {
+        ytPlayerRef.current?.playVideo()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   const isOwner = !!currentUserId && (room.owner_id === currentUserId || room.created_by === currentUserId)
   const isAdmin = currentUserProfile?.is_admin === true
   const isAdminOrOwner = isOwner || isAdmin
@@ -1527,6 +1562,21 @@ export default function MusicRoom({
     <div className="relative flex flex-col h-screen overflow-hidden bg-bg-primary">
       <AuthPromptModal isOpen={showAuthPrompt} onClose={() => setShowAuthPrompt(false)} />
 
+      {/* Mobile: tap-to-enable-audio overlay */}
+      {isMobile && hasVideo && !audioUnlocked && (
+        <button
+          className="absolute inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm cursor-pointer"
+          onClick={handleUnlockAudio}
+          aria-label="Tap to enable audio"
+        >
+          <div className="flex flex-col items-center gap-4 text-center px-8 pointer-events-none">
+            <div className="text-6xl animate-bounce">🎵</div>
+            <p className="text-xl font-bold text-white">Tap to enable audio</p>
+            <p className="text-sm text-white/60">Your browser requires a tap to start music</p>
+          </div>
+        </button>
+      )}
+
       {/* Emoji reaction bursts */}
       {bursts.map(id => (
         <EmojiReactionBurst
@@ -1548,6 +1598,7 @@ export default function MusicRoom({
           onEnded={onEnded}
           onEmbedError={onEmbedError}
           onPlayerReady={(player) => { ytPlayerRef.current = player }}
+          audioUnlocked={audioUnlocked}
         />
       )}
 

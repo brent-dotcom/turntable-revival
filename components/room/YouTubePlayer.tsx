@@ -100,6 +100,14 @@ export default function YouTubePlayer({
       },
       events: {
         onReady: (event) => {
+          // Patch the iframe element with attributes iOS Safari needs for
+          // inline autoplay. The YT API creates the iframe dynamically so
+          // we can only set these after the player is ready.
+          const iframe = containerRef.current?.querySelector('iframe')
+          if (iframe) {
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
+            iframe.setAttribute('playsinline', '1')
+          }
           if (!muted) event.target.unMute()
           event.target.setVolume(80)
           event.target.playVideo()

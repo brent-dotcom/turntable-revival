@@ -15,6 +15,8 @@ interface TrackPlayerProps {
   onEnded: () => void
   onPlayerReady?: (player: YT.Player) => void
   onEmbedError?: () => void
+  /** Flips to true when the user taps the mobile audio-unlock overlay */
+  audioUnlocked?: boolean
 }
 
 /** Hidden 1px player — keeps audio alive for all three source types */
@@ -26,6 +28,7 @@ export default function TrackPlayer({
   onEnded,
   onPlayerReady,
   onEmbedError,
+  audioUnlocked,
 }: TrackPlayerProps) {
   const hiddenStyle: React.CSSProperties = {
     position: 'absolute',
@@ -69,7 +72,7 @@ export default function TrackPlayer({
   }
 
   if (source === 'suno' && trackUrl) {
-    return <SunoAudioPlayer key={trackUrl} audioUrl={trackUrl} onEnded={onEnded} />
+    return <SunoAudioPlayer key={trackUrl} audioUrl={trackUrl} onEnded={onEnded} audioUnlocked={audioUnlocked} />
   }
 
   return null
@@ -77,15 +80,29 @@ export default function TrackPlayer({
 
 // ─── Suno audio element with autoplay + ended callback ───────────────────────
 
-function SunoAudioPlayer({ audioUrl, onEnded }: { audioUrl: string; onEnded: () => void }) {
+function SunoAudioPlayer({
+  audioUrl,
+  onEnded,
+  audioUnlocked,
+}: {
+  audioUrl: string
+  onEnded: () => void
+  audioUnlocked?: boolean
+}) {
   const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
     const el = audioRef.current
     if (!el) return
-    // Attempt autoplay (may be gated by browser autoplay policy)
-    el.play().catch(() => {/* blocked by browser — user interaction required */})
+    // Attempt autoplay (may be gated by browser autoplay policy on mobile)
+    el.play().catch(() => {/* blocked — will retry when audioUnlocked flips */})
   }, [audioUrl])
+
+  // Retry play after the user taps the mobile audio-unlock overlay
+  useEffect(() => {
+    if (!audioUnlocked) return
+    audioRef.current?.play().catch(() => {})
+  }, [audioUnlocked])
 
   return (
     <audio
