@@ -1,7 +1,8 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { Disc3 } from 'lucide-react'
+import { Disc3, Home } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Button from '@/components/ui/Button'
@@ -45,7 +46,11 @@ export default function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-bg-primary">
+    <div className="relative min-h-screen flex items-center justify-center px-4 bg-bg-primary">
+      <Link href="/" className="absolute top-4 left-4 flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors">
+        <Home size={16} />
+        <span className="hidden sm:inline">Home</span>
+      </Link>
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center gap-3 mb-8">
           <Disc3 size={40} className="text-accent-purple animate-spin-slow" />

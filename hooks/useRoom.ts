@@ -35,6 +35,7 @@ interface UseRoomReturn {
   skipSong: () => Promise<{ ok: boolean; error?: string }>
   clearCurrentTrack: () => Promise<void>
   castVote: (type: VoteType) => Promise<void>
+  leaveRoom: () => Promise<void>
   removeFromQueue: (userId: string) => Promise<void>
   updateDJSongs: (songs: TrackInfo[]) => Promise<void>
   deleteRoom: () => Promise<void>
@@ -416,6 +417,14 @@ export function useRoom(roomId: string): UseRoomReturn {
       .eq('user_id', currentUserId)
   }, [currentUserId, roomId, supabase])
 
+  const leaveRoom = useCallback(async () => {
+    if (!currentUserId) return
+    await supabase.from('dj_queue').delete()
+      .eq('room_id', roomId).eq('user_id', currentUserId)
+    await supabase.from('room_members').delete()
+      .eq('room_id', roomId).eq('user_id', currentUserId)
+  }, [currentUserId, roomId, supabase])
+
   const playSong = useCallback(async (track: TrackInfo) => {
     await supabase
       .from('rooms')
@@ -559,6 +568,7 @@ export function useRoom(roomId: string): UseRoomReturn {
     playbackElapsed,
     joinQueue,
     leaveQueue,
+    leaveRoom,
     playSong,
     skipSong,
     clearCurrentTrack,

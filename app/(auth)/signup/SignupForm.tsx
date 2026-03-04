@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { Disc3 } from 'lucide-react'
+import { Disc3, Home } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -87,7 +87,11 @@ export default function SignupPage() {
 
   if (success && needsConfirmation) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-bg-primary">
+      <div className="relative min-h-screen flex items-center justify-center px-4 bg-bg-primary">
+        <Link href="/" className="absolute top-4 left-4 flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors">
+          <Home size={16} />
+          <span className="hidden sm:inline">Home</span>
+        </Link>
         <div className="text-center max-w-sm">
           <div className="text-4xl mb-4">📬</div>
           <h2 className="text-xl font-bold text-text-primary mb-2">Check your email</h2>
@@ -105,7 +109,11 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-bg-primary">
+      <div className="relative min-h-screen flex items-center justify-center px-4 bg-bg-primary">
+        <Link href="/" className="absolute top-4 left-4 flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors">
+          <Home size={16} />
+          <span className="hidden sm:inline">Home</span>
+        </Link>
         <div className="text-center max-w-sm">
           <div className="text-4xl mb-4">🎵</div>
           <h2 className="text-xl font-bold text-text-primary mb-2">You&apos;re in!</h2>
@@ -116,7 +124,11 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-bg-primary">
+    <div className="relative min-h-screen flex items-center justify-center px-4 bg-bg-primary">
+      <Link href="/" className="absolute top-4 left-4 flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors">
+        <Home size={16} />
+        <span className="hidden sm:inline">Home</span>
+      </Link>
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3 mb-8">

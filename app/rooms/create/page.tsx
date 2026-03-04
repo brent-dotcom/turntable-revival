@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { Disc3 } from 'lucide-react'
+import { Disc3, Home } from 'lucide-react'
 import Link from 'next/link'
 
 export default function CreateRoomPage() {
@@ -42,8 +42,12 @@ export default function CreateRoomPage() {
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
+          <Link href="/" className="flex items-center gap-1 text-text-muted hover:text-text-primary transition-colors">
+            <Home size={15} /> Home
+          </Link>
+          <span className="text-text-muted/40">/</span>
           <Link href="/rooms" className="text-text-muted hover:text-text-primary transition-colors">
-            ← Back
+            Rooms
           </Link>
           <div className="flex items-center gap-2">
             <Disc3 size={20} className="text-accent-purple" />

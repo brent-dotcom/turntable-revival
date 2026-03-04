@@ -4,6 +4,7 @@ import { useRoom } from '@/hooks/useRoom'
 import MusicRoom from '@/components/room/MusicRoom'
 import SongPicker from '@/components/room/SongPicker'
 import Modal from '@/components/ui/Modal'
+import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import { Disc3 } from 'lucide-react'
 import Link from 'next/link'
@@ -38,6 +39,7 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
     castVote,
     removeFromQueue,
     updateDJSongs,
+    leaveRoom,
     deleteRoom,
     updateRoomName,
     transferOwnership,
@@ -116,6 +118,17 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
     setTimeout(() => { skippingRef.current = false }, 3_000)
   }
 
+  async function handleLeaveRoom() {
+    await leaveRoom()
+    router.push('/rooms')
+  }
+
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
   async function handleDeleteRoom() {
     await deleteRoom()
     router.push('/rooms')
@@ -176,6 +189,8 @@ export default function RoomClient({ roomId, initialUser }: RoomClientProps) {
         onDeleteRoom={handleDeleteRoom}
         onUpdateRoomName={updateRoomName}
         onTransferOwnership={transferOwnership}
+        onLeaveRoom={handleLeaveRoom}
+        onSignOut={handleSignOut}
       />
 
       <Modal

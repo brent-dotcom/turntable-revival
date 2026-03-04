@@ -75,8 +75,8 @@ export default function AdminClient({ initialRooms, initialUsers }: AdminClientP
           <ShieldCheck className="text-accent-purple" size={22} />
           <h1 className="text-lg font-bold text-text-primary">Admin Panel</h1>
         </div>
-        <Link href="/rooms" className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors">
-          <Home size={14} /> Back to Rooms
+        <Link href="/" className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors">
+          <Home size={14} /> Home
         </Link>
       </div>
 

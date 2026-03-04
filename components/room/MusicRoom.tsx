@@ -17,8 +17,11 @@ import {
   Settings,
   Trash2,
   Crown,
+  Home,
 } from "lucide-react"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 import { generateAvatarDataUrl, seedToColor } from "@/lib/avatar"
 import TrackPlayer from "@/components/room/TrackPlayer"
 import AuthPromptModal from "@/components/ui/AuthPromptModal"
@@ -64,6 +67,8 @@ interface MusicRoomProps {
   onDeleteRoom: () => Promise<void>
   onUpdateRoomName: (name: string) => Promise<void>
   onTransferOwnership: (username: string) => Promise<{ error?: string }>
+  onLeaveRoom: () => Promise<void>
+  onSignOut: () => void
 }
 
 // ─── Avatar URL helper ──────────────────────────────────────────────────────
@@ -674,9 +679,12 @@ function NowPlayingBar({
   showSettings,
   volume,
   muted,
+  currentUserProfile,
   onOpenSettings,
   onToggleMute,
   onVolumeChange,
+  onLeaveRoom,
+  onSignOut,
 }: {
   track: string
   artist: string
@@ -686,10 +694,27 @@ function NowPlayingBar({
   showSettings: boolean
   volume: number
   muted: boolean
+  currentUserProfile: Profile | null
   onOpenSettings: () => void
   onToggleMute: () => void
   onVolumeChange: (v: number) => void
+  onLeaveRoom: () => Promise<void>
+  onSignOut: () => void
 }) {
+  const router = useRouter()
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [dropdownOpen])
   const [showSlider, setShowSlider] = useState(false)
   const badge = trackSource ? getSourceBadge(trackSource) : null
   const filledBars = muted ? 0 : Math.round((volume / 100) * 5)
@@ -697,6 +722,10 @@ function NowPlayingBar({
   return (
     <header className="flex items-center justify-between px-3 md:px-6 py-3 bg-bg-card border-b border-border animate-breathe-glow" aria-label="Now Playing">
       <div className="flex items-center gap-2 md:gap-3 min-w-0">
+        <Link href="/" className="flex items-center gap-1 text-text-muted hover:text-text-primary transition-colors shrink-0" title="Home">
+          <Home className="w-4 h-4" />
+        </Link>
+        <div className="w-px h-4 bg-border/60 shrink-0" />
         <div className="flex items-center gap-1.5">
           <Music className="w-4 h-4 text-neon-purple" />
           <span className="hidden md:inline text-xs font-semibold text-neon-purple uppercase tracking-wider animate-neon-flicker">
@@ -807,6 +836,49 @@ function NowPlayingBar({
           >
             <Settings className="w-4 h-4" />
           </button>
+        )}
+
+        {/* Avatar dropdown */}
+        {currentUserProfile && (
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen((prev) => !prev)}
+              className="flex-shrink-0"
+              title="Account menu"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={avatarUrl(currentUserProfile)}
+                alt="Your avatar"
+                width={28}
+                height={28}
+                className="rounded-md ring-1 ring-white/20 hover:ring-neon-cyan/60 transition-all"
+              />
+            </button>
+            {dropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 z-50 bg-bg-card border border-border rounded-xl shadow-xl overflow-hidden min-w-[140px]">
+                <button
+                  onClick={() => { setDropdownOpen(false); router.push('/profile') }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-text-primary hover:bg-bg-secondary transition-colors"
+                >
+                  My Profile
+                </button>
+                <button
+                  onClick={() => { setDropdownOpen(false); onLeaveRoom() }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-text-primary hover:bg-bg-secondary transition-colors"
+                >
+                  Leave Room
+                </button>
+                <div className="h-px bg-border" />
+                <button
+                  onClick={() => { setDropdownOpen(false); onSignOut() }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-accent-red hover:bg-bg-secondary transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </header>
@@ -1307,6 +1379,8 @@ export default function MusicRoom({
   onDeleteRoom,
   onUpdateRoomName,
   onTransferOwnership,
+  onLeaveRoom,
+  onSignOut,
 }: MusicRoomProps) {
   const supabase = createClient()
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
@@ -1497,9 +1571,12 @@ export default function MusicRoom({
         showSettings={isAdminOrOwner}
         volume={volume}
         muted={muted}
+        currentUserProfile={currentUserProfile}
         onOpenSettings={() => setShowSettings(true)}
         onToggleMute={handleToggleMute}
         onVolumeChange={handleVolumeChange}
+        onLeaveRoom={onLeaveRoom}
+        onSignOut={onSignOut}
       />
 
       {/* Main content */}

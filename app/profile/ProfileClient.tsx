@@ -23,6 +23,12 @@ export default function ProfileClient({ profile, userEmail }: ProfileClientProps
   const [savingName, setSavingName] = useState(false)
   const [savedName, setSavedName] = useState(false)
 
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+
   async function handleSaveName() {
     setSavingName(true)
     await supabase
@@ -32,6 +38,29 @@ export default function ProfileClient({ profile, userEmail }: ProfileClientProps
     setSavingName(false)
     setSavedName(true)
     setTimeout(() => setSavedName(false), 2000)
+  }
+
+  async function handleChangePassword() {
+    setPasswordError(null)
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match')
+      return
+    }
+    setSavingPassword(true)
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setSavingPassword(false)
+    if (error) {
+      setPasswordError(error.message)
+    } else {
+      setPasswordSuccess(true)
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => setPasswordSuccess(false), 3000)
+    }
   }
 
   async function handleSignOut() {
@@ -44,7 +73,7 @@ export default function ProfileClient({ profile, userEmail }: ProfileClientProps
     <div className="min-h-screen bg-bg-primary">
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-border/60 bg-bg-secondary/50 backdrop-blur-md">
-        <Link href="/rooms" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <Disc3 size={20} className="text-accent-purple animate-spin-slow" />
           <span
             className="font-bold text-text-primary"
@@ -124,6 +153,44 @@ export default function ProfileClient({ profile, userEmail }: ProfileClientProps
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Security */}
+        <div className="bg-bg-card border border-border rounded-2xl p-6 mb-6">
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-4">
+            Security
+          </h2>
+          <div className="flex flex-col gap-4">
+            <Input
+              label="New Password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Min. 8 characters"
+            />
+            <Input
+              label="Confirm New Password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter new password"
+            />
+            {passwordError && (
+              <p className="text-xs text-accent-red">{passwordError}</p>
+            )}
+            {passwordSuccess && (
+              <p className="text-xs text-green-400">✓ Password updated</p>
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleChangePassword}
+              loading={savingPassword}
+              className="self-start"
+            >
+              Update Password
+            </Button>
           </div>
         </div>
 
