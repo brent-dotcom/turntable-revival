@@ -18,6 +18,7 @@ import {
   Trash2,
   Crown,
   Home,
+  LogOut,
 } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
@@ -683,7 +684,7 @@ function NowPlayingBar({
   onOpenSettings,
   onToggleMute,
   onVolumeChange,
-  onLeaveRoom,
+  onRequestLeave,
   onSignOut,
 }: {
   track: string
@@ -698,7 +699,7 @@ function NowPlayingBar({
   onOpenSettings: () => void
   onToggleMute: () => void
   onVolumeChange: (v: number) => void
-  onLeaveRoom: () => Promise<void>
+  onRequestLeave: () => void
   onSignOut: () => void
 }) {
   const router = useRouter()
@@ -838,6 +839,17 @@ function NowPlayingBar({
           </button>
         )}
 
+        {/* Leave Room button */}
+        {currentUserProfile && (
+          <button
+            onClick={onRequestLeave}
+            className="p-1.5 rounded-md text-text-muted hover:text-accent-red hover:bg-accent-red/10 transition-colors"
+            title="Leave Room"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        )}
+
         {/* Avatar dropdown */}
         {currentUserProfile && (
           <div className="relative" ref={dropdownRef}>
@@ -864,7 +876,7 @@ function NowPlayingBar({
                   My Profile
                 </button>
                 <button
-                  onClick={() => { setDropdownOpen(false); onLeaveRoom() }}
+                  onClick={() => { setDropdownOpen(false); onRequestLeave() }}
                   className="w-full text-left px-4 py-2.5 text-sm text-text-primary hover:bg-bg-secondary transition-colors"
                 >
                   Leave Room
@@ -1415,7 +1427,10 @@ export default function MusicRoom({
   }, [])
 
   function handleUnlockAudio() {
-    ytPlayerRef.current?.playVideo()
+    // Don't call ytPlayerRef.current?.playVideo() here — on mobile the player
+    // is NOT rendered yet (deferred until audioUnlocked). Setting audioUnlocked
+    // causes TrackPlayer to mount, creating the iframe within/near this gesture.
+    console.log('[MusicRoom] handleUnlockAudio — mounting player now')
     setAudioUnlocked(true)
   }
 
@@ -1434,6 +1449,23 @@ export default function MusicRoom({
   const isOwner = !!currentUserId && (room.owner_id === currentUserId || room.created_by === currentUserId)
   const isAdmin = currentUserProfile?.is_admin === true
   const isAdminOrOwner = isOwner || isAdmin
+  const isInDJQueue = !!currentUserId && queue.some((q) => q.user_id === currentUserId)
+
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+
+  function handleRequestLeave() {
+    setShowLeaveConfirm(true)
+  }
+
+  async function handleConfirmLeave() {
+    setShowLeaveConfirm(false)
+    // If we're the active DJ, advance the queue before leaving so the next DJ
+    // gets a turn rather than the room getting stuck.
+    if (isCurrentDJ) {
+      await onSkip().catch(console.error)
+    }
+    await onLeaveRoom()
+  }
 
   function handleVote(type: VoteType) {
     if (type === 'awesome') {
@@ -1562,6 +1594,37 @@ export default function MusicRoom({
     <div className="relative flex flex-col h-screen overflow-hidden bg-bg-primary">
       <AuthPromptModal isOpen={showAuthPrompt} onClose={() => setShowAuthPrompt(false)} />
 
+      {/* Leave Room confirmation modal */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-base font-bold text-text-primary mb-2">Leave Room?</h3>
+            <p className="text-sm text-text-secondary mb-6">
+              {isCurrentDJ
+                ? "You're the active DJ — leaving will skip your set and advance the queue."
+                : isInDJQueue
+                ? "You're in the DJ queue — leaving will remove your spot."
+                : "Are you sure you want to leave this room?"}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm text-text-muted hover:text-text-primary hover:border-border/80 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmLeave}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444' }}
+              >
+                Leave Room
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile: tap-to-enable-audio overlay */}
       {isMobile && hasVideo && !audioUnlocked && (
         <button
@@ -1588,8 +1651,21 @@ export default function MusicRoom({
       {/* CRT scanline overlay */}
       <div className="scanline-overlay absolute inset-0 z-50 pointer-events-none" />
 
-      {/* Hidden track player — YouTube / SoundCloud / Suno */}
-      {hasVideo && (
+      {/* Mobile audio debug badge — visible to help verify the unlock state */}
+      {isMobile && (
+        <div
+          className="fixed bottom-2 right-2 z-[100] text-[10px] px-2 py-1 rounded pointer-events-none select-none"
+          style={{ background: 'rgba(0,0,0,0.65)', color: audioUnlocked ? '#10b981' : '#f59e0b' }}
+        >
+          {audioUnlocked ? '🔊 audio on' : '🔇 waiting'}
+        </div>
+      )}
+
+      {/* Hidden track player — YouTube / SoundCloud / Suno.
+          On mobile, defer rendering until the user taps the audio-unlock overlay
+          so the iframe is created within the user-gesture activation context
+          (required for iOS Safari autoplay). */}
+      {hasVideo && (!isMobile || audioUnlocked) && (
         <TrackPlayer
           source={(room.current_track_source as TrackSource) ?? 'youtube'}
           videoId={room.current_video_id ?? undefined}
@@ -1599,6 +1675,7 @@ export default function MusicRoom({
           onEmbedError={onEmbedError}
           onPlayerReady={(player) => { ytPlayerRef.current = player }}
           audioUnlocked={audioUnlocked}
+          isMobile={isMobile}
         />
       )}
 
@@ -1626,7 +1703,7 @@ export default function MusicRoom({
         onOpenSettings={() => setShowSettings(true)}
         onToggleMute={handleToggleMute}
         onVolumeChange={handleVolumeChange}
-        onLeaveRoom={onLeaveRoom}
+        onRequestLeave={handleRequestLeave}
         onSignOut={onSignOut}
       />
 
