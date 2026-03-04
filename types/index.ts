@@ -102,6 +102,8 @@ export interface DJQueueEntry {
   spot: number
   /** Ordered array of queued TrackInfo objects (max 3) */
   songs: TrackInfo[]
+  /** Timestamp of when this DJ last played a song — used for round-robin ordering */
+  last_played_at: string | null
   created_at: string
   // Joined
   profile?: Profile

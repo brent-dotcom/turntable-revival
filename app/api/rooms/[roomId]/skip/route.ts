@@ -107,9 +107,62 @@ export async function POST(
     .update({ last_skipped_at: new Date().toISOString() })
     .eq('id', roomId)
 
-  // ── Check if the current DJ has more songs in their queue ──────────────────
-  // Look up by current_dj_id directly — do NOT gate on active_dj_spot since it
-  // may legitimately be null for rooms created before the column was added.
+  // ── Count how many DJs are currently in the queue ─────────────────────────
+  // This determines single-DJ vs. round-robin mode.
+  const { count: djCount } = await supabase
+    .from('dj_queue')
+    .select('*', { count: 'exact', head: true })
+    .eq('room_id', roomId)
+
+  const hasMultipleDJs = (djCount ?? 0) > 1
+
+  console.log('[Skip] djCount:', djCount, '| hasMultipleDJs:', hasMultipleDJs)
+
+  // ── ROUND-ROBIN MODE (2+ DJs) ─────────────────────────────────────────────
+  // Never let the same DJ play two songs in a row when others are waiting.
+  // The current DJ's remaining songs are preserved — they'll play them when
+  // the rotation comes back around to them.
+  if (hasMultipleDJs && room.current_dj_id) {
+    const { data: djEntry } = await supabase
+      .from('dj_queue')
+      .select('id, songs')
+      .eq('room_id', roomId)
+      .eq('user_id', room.current_dj_id)
+      .single()
+
+    const songs = (djEntry?.songs ?? []) as TrackInfo[]
+
+    // Remove only the currently-playing song from the array; keep everything
+    // else so the DJ can play those songs when it's their turn again.
+    const firstSongIsCurrent =
+      songs.length > 0 &&
+      ((songs[0]?.videoId != null && songs[0].videoId === room.current_video_id) ||
+       (songs[0]?.trackUrl != null && songs[0].trackUrl === room.current_track_url))
+    const remainingAfterCurrent = firstSongIsCurrent ? songs.slice(1) : songs
+
+    console.log('[Skip] round-robin: remaining songs for current DJ:', remainingAfterCurrent.length)
+
+    // rotate_dj_queue (SECURITY DEFINER):
+    //   - Saves remainingAfterCurrent into current DJ's songs[]
+    //   - Stamps current DJ's last_played_at = now()
+    //   - Promotes the next DJ ordered by last_played_at ASC NULLS FIRST, spot ASC
+    const { error: rotateError } = await supabase.rpc('rotate_dj_queue', {
+      p_room_id: roomId,
+      p_remaining_songs: remainingAfterCurrent,
+    })
+
+    if (rotateError) {
+      console.log('[Skip] rotate_dj_queue error:', rotateError.message)
+      return NextResponse.json({ error: rotateError.message }, { status: 500 })
+    }
+
+    console.log('[Skip] ✓ rotate_dj_queue completed')
+    return NextResponse.json({ ok: true, action: 'round_robin' })
+  }
+
+  // ── SINGLE-DJ MODE ────────────────────────────────────────────────────────
+  // Play the DJ's next queued song without changing who's on stage.
+  // When their songs run out, advance_dj_queue removes them and clears the stage.
   if (room.current_dj_id) {
     const { data: djEntry } = await supabase
       .from('dj_queue')
@@ -184,8 +237,8 @@ export async function POST(
     console.log('[Skip] No active DJ — advancing')
   }
 
-  // No more songs for this DJ — rotate to the next occupied spot.
-  // advance_dj_queue (SECURITY DEFINER) clears all video/track fields atomically.
+  // No more songs for this DJ (single-DJ mode) — remove them and clear the stage.
+  // advance_dj_queue (SECURITY DEFINER) handles this atomically.
   const { error: advanceError } = await supabase.rpc('advance_dj_queue', {
     p_room_id: roomId,
   })
