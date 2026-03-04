@@ -9,6 +9,8 @@ interface YouTubePlayerProps {
   onReady?: () => void
   onPlayerReady?: (player: YT.Player) => void
   onEmbedError?: () => void
+  /** Called when the player transitions to PLAYING state (useful for auto-dismissing mobile overlay) */
+  onPlaying?: () => void
   muted?: boolean
 }
 
@@ -51,6 +53,7 @@ export default function YouTubePlayer({
   onReady,
   onPlayerReady,
   onEmbedError,
+  onPlaying,
   muted = false,
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -59,6 +62,7 @@ export default function YouTubePlayer({
   const onReadyRef = useRef(onReady)
   const onPlayerReadyRef = useRef(onPlayerReady)
   const onEmbedErrorRef = useRef(onEmbedError)
+  const onPlayingRef = useRef(onPlaying)
   // Capture startSeconds only once — changing it must not recreate the player
   const startSecondsRef = useRef(startSeconds)
 
@@ -66,6 +70,7 @@ export default function YouTubePlayer({
   useEffect(() => { onReadyRef.current = onReady }, [onReady])
   useEffect(() => { onPlayerReadyRef.current = onPlayerReady }, [onPlayerReady])
   useEffect(() => { onEmbedErrorRef.current = onEmbedError }, [onEmbedError])
+  useEffect(() => { onPlayingRef.current = onPlaying }, [onPlaying])
 
   const createPlayer = useCallback(async () => {
     await loadYouTubeAPI()
@@ -119,6 +124,9 @@ export default function YouTubePlayer({
           if (event.data === window.YT.PlayerState.ENDED) {
             console.log('[YT] ENDED — calling onEnded')
             onEndedRef.current?.()
+          }
+          if (event.data === window.YT.PlayerState.PLAYING) {
+            onPlayingRef.current?.()
           }
         },
         onError: (event) => {

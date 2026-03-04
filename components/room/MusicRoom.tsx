@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
-import { flushSync } from "react-dom"
 import {
   ThumbsUp,
   ThumbsDown,
@@ -1415,9 +1414,14 @@ export default function MusicRoom({
   // unlocks audio for the rest of the session.
   const [isMobile, setIsMobile] = useState(false)
   const [audioUnlocked, setAudioUnlocked] = useState(false)
+  // True once the YT player fires onPlayerReady — used to gate the tap overlay
+  // so we never call playVideo() on a null ref (race condition fix).
+  const [ytPlayerReady, setYtPlayerReady] = useState(false)
   const isMobileRef = useRef(false)
   const hasVideoRef = useRef(hasVideo)
   useEffect(() => { hasVideoRef.current = hasVideo }, [hasVideo])
+  // Reset player-ready flag when the track changes so the overlay re-gates correctly
+  useEffect(() => { setYtPlayerReady(false) }, [room.current_video_id, room.current_track_url])
 
   useEffect(() => {
     const mobile =
@@ -1428,13 +1432,17 @@ export default function MusicRoom({
   }, [])
 
   function handleUnlockAudio() {
-    // flushSync forces React to commit the DOM update SYNCHRONOUSLY inside this
-    // click handler. The <iframe> element is therefore created while iOS Safari's
-    // gesture activation token is still valid, which is required for autoplay=1
-    // to be honoured. A plain setState() schedules an async re-render that runs
-    // after the handler returns — too late for iOS Safari's autoplay check.
-    console.log('[MusicRoom] handleUnlockAudio — flushSync mounting player')
-    flushSync(() => setAudioUnlocked(true))
+    if (!ytPlayerRef.current) {
+      // Player not initialised yet — the overlay shows "Loading…" and the user
+      // must wait. Don't dismiss the overlay; they'll tap again once it's ready.
+      console.log('[MusicRoom] handleUnlockAudio — player not ready yet, ignoring tap')
+      return
+    }
+    console.log('[MusicRoom] handleUnlockAudio — calling playVideo() within gesture')
+    // playVideo() called synchronously inside the click handler satisfies iOS
+    // Safari's requirement that media play be triggered by a direct user gesture.
+    ytPlayerRef.current.playVideo()
+    setAudioUnlocked(true)
   }
 
   // Resume playback when the user switches back to this tab on mobile
@@ -1628,17 +1636,31 @@ export default function MusicRoom({
         </div>
       )}
 
-      {/* Mobile: tap-to-enable-audio overlay */}
+      {/* Mobile: tap-to-enable-audio overlay.
+          Shows "Loading…" while the YT player initialises; switches to
+          "Tap to play" once onPlayerReady fires and ytPlayerRef is set.
+          handleUnlockAudio is a no-op until ytPlayerRef.current is non-null,
+          so the tap is safe to allow in both states. */}
       {isMobile && hasVideo && !audioUnlocked && (
         <button
           className="absolute inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm cursor-pointer"
           onClick={handleUnlockAudio}
-          aria-label="Tap to enable audio"
+          aria-label={ytPlayerReady ? 'Tap to enable audio' : 'Loading player'}
         >
           <div className="flex flex-col items-center gap-4 text-center px-8 pointer-events-none">
-            <div className="text-6xl animate-bounce">🎵</div>
-            <p className="text-xl font-bold text-white">Tap to enable audio</p>
-            <p className="text-sm text-white/60">Your browser requires a tap to start music</p>
+            {ytPlayerReady ? (
+              <>
+                <div className="text-6xl animate-bounce">🎵</div>
+                <p className="text-xl font-bold text-white">Tap to enable audio</p>
+                <p className="text-sm text-white/60">Your browser requires a tap to start music</p>
+              </>
+            ) : (
+              <>
+                <div className="text-5xl animate-pulse opacity-60">⏳</div>
+                <p className="text-xl font-bold text-white">Loading player…</p>
+                <p className="text-sm text-white/60">Tap once the player is ready</p>
+              </>
+            )}
           </div>
         </button>
       )}
@@ -1664,11 +1686,8 @@ export default function MusicRoom({
         </div>
       )}
 
-      {/* Hidden track player — YouTube / SoundCloud / Suno.
-          On mobile, defer rendering until the user taps the audio-unlock overlay
-          so the iframe is created within the user-gesture activation context
-          (required for iOS Safari autoplay). */}
-      {hasVideo && (!isMobile || audioUnlocked) && (
+      {/* Hidden track player — YouTube / SoundCloud / Suno */}
+      {hasVideo && (
         <TrackPlayer
           source={(room.current_track_source as TrackSource) ?? 'youtube'}
           videoId={room.current_video_id ?? undefined}
@@ -1676,9 +1695,16 @@ export default function MusicRoom({
           playbackElapsed={playbackElapsed}
           onEnded={onEnded}
           onEmbedError={onEmbedError}
-          onPlayerReady={(player) => { ytPlayerRef.current = player }}
+          onPlayerReady={(player) => {
+            ytPlayerRef.current = player
+            setYtPlayerReady(true)
+          }}
+          onPlaying={() => {
+            // Player started playing on its own (autoplay worked — Android / desktop).
+            // Auto-dismiss the mobile overlay so the user isn't blocked.
+            if (!audioUnlocked) setAudioUnlocked(true)
+          }}
           audioUnlocked={audioUnlocked}
-          isMobile={isMobile}
         />
       )}
 
