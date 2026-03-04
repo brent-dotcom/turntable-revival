@@ -115,22 +115,34 @@ function MobileYouTubePlayer({
   onEnded: () => void
   onEmbedError?: () => void
 }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const onEndedRef = useRef(onEnded)
   const onEmbedErrorRef = useRef(onEmbedError)
   useEffect(() => { onEndedRef.current = onEnded }, [onEnded])
   useEffect(() => { onEmbedErrorRef.current = onEmbedError }, [onEmbedError])
 
-  // Listen for YouTube state-change events sent via postMessage
+  // YouTube iframes with enablejsapi=1 send postMessage events, but only after
+  // the parent page sends a {"event":"listening"} handshake. State changes arrive
+  // as {"event":"infoDelivery","info":{"playerState":N}} where playerState 0 = ended.
+  // Errors arrive as {"event":"onError","info":code}.
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (!String(event.origin).includes('youtube.com')) return
       try {
         const data = JSON.parse(typeof event.data === 'string' ? event.data : '{}')
-        console.log('[MobileYT] msg event=%s info=%s', data.event, data.info)
-        if (data.event === 'onStateChange' && data.info === 0) {
-          console.log('[MobileYT] ENDED — calling onEnded')
+        console.log('[MobileYT] msg event=%s', data.event, data.info ?? data.info)
+
+        // Primary format: infoDelivery (playerState 0 = ended)
+        if (data.event === 'infoDelivery' && data.info?.playerState === 0) {
+          console.log('[MobileYT] ENDED via infoDelivery — calling onEnded')
           onEndedRef.current?.()
         }
+        // Fallback format (some player versions)
+        if (data.event === 'onStateChange' && data.info === 0) {
+          console.log('[MobileYT] ENDED via onStateChange — calling onEnded')
+          onEndedRef.current?.()
+        }
+        // Embed errors
         if (data.event === 'onError') {
           const code = Number(data.info)
           console.warn('[MobileYT] error code:', code)
@@ -146,6 +158,14 @@ function MobileYouTubePlayer({
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 
+  // Send the "listening" handshake so YouTube starts delivering events
+  function handleIframeLoad() {
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'listening', id: 1 }),
+      '*'
+    )
+  }
+
   const params = new URLSearchParams({
     autoplay: '1',
     playsinline: '1',
@@ -160,12 +180,14 @@ function MobileYouTubePlayer({
 
   return (
     <iframe
+      ref={iframeRef}
       src={`https://www.youtube.com/embed/${videoId}?${params.toString()}`}
       width="1"
       height="1"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
       title="YouTube player"
       style={{ border: 'none' }}
+      onLoad={handleIframeLoad}
     />
   )
 }

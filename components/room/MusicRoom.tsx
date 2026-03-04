@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { flushSync } from "react-dom"
 import {
   ThumbsUp,
   ThumbsDown,
@@ -1427,11 +1428,13 @@ export default function MusicRoom({
   }, [])
 
   function handleUnlockAudio() {
-    // Don't call ytPlayerRef.current?.playVideo() here — on mobile the player
-    // is NOT rendered yet (deferred until audioUnlocked). Setting audioUnlocked
-    // causes TrackPlayer to mount, creating the iframe within/near this gesture.
-    console.log('[MusicRoom] handleUnlockAudio — mounting player now')
-    setAudioUnlocked(true)
+    // flushSync forces React to commit the DOM update SYNCHRONOUSLY inside this
+    // click handler. The <iframe> element is therefore created while iOS Safari's
+    // gesture activation token is still valid, which is required for autoplay=1
+    // to be honoured. A plain setState() schedules an async re-render that runs
+    // after the handler returns — too late for iOS Safari's autoplay check.
+    console.log('[MusicRoom] handleUnlockAudio — flushSync mounting player')
+    flushSync(() => setAudioUnlocked(true))
   }
 
   // Resume playback when the user switches back to this tab on mobile
